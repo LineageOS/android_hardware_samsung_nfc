@@ -80,7 +80,7 @@ int nfc_hal_init(void) {
   /* don't print log at user binary */
   ret = property_get("ro.build.type", valueStr, "");
   if (!strncmp("user", valueStr, PROPERTY_VALUE_MAX)) {
-    property_get("ro.debug_level", valueStr, "");
+    property_get("ro.vendor.nfc.debug_level", valueStr, "");
     if (strncmp("0x4f4c", valueStr, PROPERTY_VALUE_MAX)) {
       trace_level = 2;
       data_trace = true;
