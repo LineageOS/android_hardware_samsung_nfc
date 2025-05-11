@@ -71,5 +71,6 @@ cc_library_shared {
         "liblog",
         "libutils",
         "libcrypto",
+        "android.hardware.nfc-V1-ndk",
     ],
 }

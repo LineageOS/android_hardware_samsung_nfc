@@ -1,0 +1,29 @@
+/*
+ * Copyright (C) 2025 The LineageOS Project
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+cc_binary {
+    name: "android.hardware.nfc-service.samsung",
+    proprietary: true,
+    init_rc: ["nfc-service-samsung.rc"],
+    vintf_fragments: ["nfc-service-samsung.xml"],
+    relative_install_path: "hw",
+    srcs: [
+        "SecNfcService.cpp",
+        "SecNfc.cpp",
+        "SecNfcExtns.cpp"
+    ],
+    cflags: [
+    ],
+    shared_libs: [
+        "nfc_nci_samsung",
+        "android.hardware.nfc-V1-ndk",
+        "libbase",
+        "liblog",
+        "libutils",
+        "libbinder_ndk",
+        "libhardware",
+    ],
+}
