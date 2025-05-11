@@ -25,13 +25,13 @@
 
 #include "config.h"
 
-using namespace android::hardware::nfc::V1_1;
-using android::hardware::nfc::V1_1::NfcEvent;
 tNFC_HAL_CB nfc_hal_info;
 
 /* START - VTS Replay */
 bool sending_nci_packet = false;
 /* END - VTS Replay */
+
+bool nfc_debug_enabled = true;
 
 /*************************************
  * Generic device handling.
@@ -247,18 +247,18 @@ int nfc_hal_write(uint16_t data_len, const uint8_t* p_data) {
   return size; /* VTS */
 }
 
-int nfc_hal_core_initialized(uint8_t* p_core_init_rsp_params) {
+int nfc_hal_core_initialized() {
   tNFC_HAL_MSG* msg;
-  size_t size = (size_t)p_core_init_rsp_params[2] + 3;
 
   OSI_logt("enter;");
 
-  msg = (tNFC_HAL_MSG*)OSI_mem_get(size + HAL_EVT_SIZE);
+  msg = (tNFC_HAL_MSG*)OSI_mem_get(HAL_EVT_SIZE);
   if (msg != NULL) {
     msg->event = HAL_EVT_CORE_INIT;
-    memcpy((uint8_t*)&msg->nci_packet, p_core_init_rsp_params, size);
-
     OSI_queue_put(nfc_hal_info.msg_q, (void*)msg);
+  }
+  else {
+    OSI_loge("msg is null;");
   }
   OSI_logt("exit;");
   return 0;
@@ -315,6 +315,14 @@ int nfc_hal_power_cycle() {
   return 0;
 }
 
+void nfc_hal_setLogging(bool enable) {
+  nfc_debug_enabled = enable;
+}
+
+bool nfc_hal_isLoggingEnabled() {
+  return nfc_debug_enabled;
+}
+
 void setSleepTimeout(int option, uint32_t timeout) {
   nfc_hal_info.flag &= ~HAL_FLAG_PROP_ONE_TIMER;
   nfc_hal_info.cfg.override_timeout = 0;
@@ -336,7 +344,6 @@ void setSleepTimeout(int option, uint32_t timeout) {
   OSI_logd("Sleep timeout is %d ms", nfc_hal_info.cfg.sleep_timeout);
 }
 
-#ifdef INFC_1_1
 int nfc_hal_factory_reset(void) {
   OSI_logt("enter;");
   // TO DO impl
@@ -344,109 +351,3 @@ int nfc_hal_factory_reset(void) {
 
   return 0;
 }
-
-int nfc_hal_closeForPowerOffCase(void) {
-  OSI_logt("enter;");
-  // TO DO impl
-  nfc_hal_close();
-  OSI_logt("exit;");
-
-  return 0;
-}
-
-void nfc_hal_getVendorConfig(android::hardware::nfc::V1_1::NfcConfig& config) {
-  OSI_logt("v1_1 enter;");
-  const int MAX_CONFIG_STRING_LEN = 260;
-  unsigned long num = 0;
-  std::array<uint8_t, MAX_CONFIG_STRING_LEN> buffer;
-  buffer.fill(0);
-  long retlen = 0;
-  memset(&config, 0x00, sizeof(NfcConfig));
-  config.nfaPollBailOutMode = false;
-  if (GetNumValue(NAME_ISO_DEP_MAX_TRANSCEIVE, &num, sizeof(num))) {
-    config.maxIsoDepTransceiveLength = num;
-  }
-  if (GetNumValue(NAME_DEFAULT_OFFHOST_ROUTE, &num, sizeof(num))) {
-    config.defaultOffHostRoute = num;
-  }
-  if (GetNumValue(NAME_DEFAULT_NFCF_ROUTE, &num, sizeof(num))) {
-    config.defaultOffHostRouteFelica = num;
-  }
-  if (GetNumValue(NAME_DEFAULT_SYS_CODE_ROUTE, &num, sizeof(num))) {
-    config.defaultSystemCodeRoute = num;
-  }
-  if (GetNumValue(NAME_DEFAULT_SYS_CODE_PWR_STATE, &num, sizeof(num))) {
-    config.defaultSystemCodePowerState = num;
-  }
-  if (GetNumValue(NAME_DEFAULT_ROUTE, &num, sizeof(num))) {
-    config.defaultRoute = num;
-    OSI_logt("mDefaultRoute is %d ", (int)num);
-  }
-  if (GetByteArrayValue(NAME_DEVICE_HOST_WHITE_LIST, (char*)buffer.data(),
-                        buffer.size(), &retlen)) {
-    config.hostWhitelist.resize(retlen);
-    for (int i = 0; i < retlen; i++) config.hostWhitelist[i] = buffer[i];
-  }
-  if (GetNumValue(NAME_OFF_HOST_ESE_PIPE_ID, &num, sizeof(num))) {
-    config.offHostESEPipeId = num;
-  }
-  if (GetNumValue(NAME_OFF_HOST_SIM_PIPE_ID, &num, sizeof(num))) {
-    config.offHostSIMPipeId = num;
-  }
-  if (GetByteArrayValue(NAME_NFA_PROPRIETARY_CFG, (char*)buffer.data(),
-                        buffer.size(), &retlen)) {
-    config.nfaProprietaryCfg.protocol18092Active = (uint8_t)buffer[0];
-    config.nfaProprietaryCfg.protocolBPrime = (uint8_t)buffer[1];
-    config.nfaProprietaryCfg.protocolDual = (uint8_t)buffer[2];
-    config.nfaProprietaryCfg.protocol15693 = (uint8_t)buffer[3];
-    config.nfaProprietaryCfg.protocolKovio = (uint8_t)buffer[4];
-    config.nfaProprietaryCfg.protocolMifare = (uint8_t)buffer[5];
-    config.nfaProprietaryCfg.discoveryPollKovio = (uint8_t)buffer[6];
-    config.nfaProprietaryCfg.discoveryPollBPrime = (uint8_t)buffer[7];
-    config.nfaProprietaryCfg.discoveryListenBPrime = (uint8_t)buffer[8];
-  } else {
-    memset(&config.nfaProprietaryCfg, 0xFF, sizeof(ProtocolDiscoveryConfig));
-  }
-  if ((GetNumValue(NAME_PRESENCE_CHECK_ALGORITHM, &num, sizeof(num))) &&
-      (num <= 5)) {
-    config.presenceCheckAlgorithm = (PresenceCheckAlgorithm)num;
-  }
-  OSI_logt("exit;");
-}
-
-void nfc_hal_getVendorConfig_1_2(
-    android::hardware::nfc::V1_2::NfcConfig& config) {
-  OSI_logt("v1_2 enter;");
-  const int MAX_CONFIG_STRING_LEN = 260;
-  unsigned long num = 0;
-  std::array<uint8_t, MAX_CONFIG_STRING_LEN> buffer;
-
-  buffer.fill(0);
-  long retlen = 0;
-
-  memset(&config, 0x00, sizeof(android::hardware::nfc::V1_2::NfcConfig));
-
-  nfc_hal_getVendorConfig(config.v1_1);
-
-  if (GetByteArrayValue(NAME_OFFHOST_ROUTE_UICC, (char*)buffer.data(),
-                        buffer.size(), &retlen)) {
-    config.offHostRouteUicc.resize(retlen);
-    for (int i = 0; i < retlen; i++) {
-      config.offHostRouteUicc[i] = buffer[i];
-    }
-  }
-  if (GetByteArrayValue(NAME_OFFHOST_ROUTE_ESE, (char*)buffer.data(),
-                        buffer.size(), &retlen)) {
-    config.offHostRouteEse.resize(retlen);
-    for (int i = 0; i < retlen; i++) {
-      config.offHostRouteEse[i] = buffer[i];
-    }
-  }
-  if (GetNumValue(NAME_DEFAULT_ISODEP_ROUTE, &num, sizeof(num))) {
-    config.defaultIsoDepRoute = num;
-  }
-
-  OSI_logt("exit;");
-}
-
-#endif

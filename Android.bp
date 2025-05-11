@@ -41,7 +41,6 @@ cc_library_shared {
         "-DNFC_HAL_TARGET=TRUE",
         "-DNFC_RW_ONLY=TRUE",
         "-DNFC_SEC_NOT_OPEN_INCLUDED=TRUE",
-        "-DINFC_1_1",
     ],
 
     srcs: [
@@ -60,9 +59,7 @@ cc_library_shared {
     ],
 
     shared_libs: [
-        "android.hardware.nfc@1.0",
-        "android.hardware.nfc@1.1",
-        "android.hardware.nfc@1.2",
+        "android.hardware.nfc-V1-ndk",
         "libbase",
         "libcutils",
         "libhardware",
@@ -71,5 +68,37 @@ cc_library_shared {
         "liblog",
         "libutils",
         "libcrypto",
+    ],
+}
+
+cc_binary {
+    name: "android.hardware.nfc-service.samsung",
+    proprietary: true,
+    init_rc: ["aidl/nfc-service-samsung.rc"],
+    vintf_fragments: ["aidl/nfc-service-samsung.xml"],
+    relative_install_path: "hw",
+    srcs: [
+        "aidl/SecNfcService.cpp",
+        "aidl/SecNfc.cpp",
+        "aidl/SecNfcExtns.cpp"
+    ],
+    cflags: [
+        "-Wall",
+        "-Werror",
+        "-Wextra",
+    ],
+    local_include_dirs: [
+        "halimpl/include",
+        "halimpl/osi",
+    ],
+
+    shared_libs: [
+        "nfc_nci_samsung",
+        "android.hardware.nfc-V1-ndk",
+        "libbase",
+        "liblog",
+        "libutils",
+        "libbinder_ndk",
+        "libhardware",
     ],
 }
