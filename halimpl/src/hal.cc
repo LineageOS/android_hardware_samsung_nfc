@@ -29,7 +29,7 @@ using namespace android::hardware::nfc::V1_1;
 using android::hardware::nfc::V1_1::NfcEvent;
 tNFC_HAL_CB nfc_hal_info;
 
-bool sending_nci_packet = false;
+bool nfc_debug_enabled = true;
 
 /*************************************
  * Generic device handling.
@@ -49,11 +49,6 @@ bool nfc_data_callback(tNFC_NCI_PKT* pkt) {
   OSI_logt("!");
   if (!nfc_hal_info.data_cback) return false;
 
-  if (((data[0] >> 4) == 4) && (sending_nci_packet == true)) {
-    OSI_logt("clear sendig_nci_packet");
-    sending_nci_packet = false;
-  }
-
   nfc_hal_info.data_cback(len, data);
   return true;
 }
@@ -69,12 +64,10 @@ int nfc_hal_init(void) {
 
   OSI_logt("enter; ========================================");
 
-  sending_nci_packet = false;
-
   /* don't print log at user binary */
   ret = property_get("ro.build.type", valueStr, "");
   if (!strncmp("user", valueStr, PROPERTY_VALUE_MAX)) {
-    property_get("ro.debug_level", valueStr, "");
+    property_get("ro.vendor.nfc.debug_level", valueStr, "");
     if (strncmp("0x4f4c", valueStr, PROPERTY_VALUE_MAX)) {
       trace_level = 2;
       data_trace = true;
@@ -210,23 +203,12 @@ int nfc_hal_write(uint16_t data_len, const uint8_t* p_data) {
   size_t size = (size_t)data_len;
 
   OSI_logt("enter;");
-  if ((sending_nci_packet == true) && ((p_data[0] >> 4) == 2)
-      && !(nfc_hal_info.flag & HAL_FLAG_ALREADY_INIT)) {
-    OSI_logt("Don't send NCI");
-    return size;
-  }
 
   msg = (tNFC_HAL_MSG*)OSI_mem_get(size + HAL_EVT_SIZE);
   if (msg != NULL) {
     msg->event = HAL_EVT_WRITE;
     memcpy((uint8_t*)&msg->nci_packet, p_data, size);
-
-    if ((sending_nci_packet == false) && ((p_data[0] >> 4) == 2))
-      sending_nci_packet = true;
   }
-  // changed OIS_queue_put() sequence to meet VTS Replay
-  if (OSI_queue_put(nfc_hal_info.msg_q, (void*)msg) == -1)
-    sending_nci_packet = false;
 
   OSI_logt("exit;");
   return size;
@@ -244,6 +226,23 @@ int nfc_hal_core_initialized(uint8_t* p_core_init_rsp_params) {
     memcpy((uint8_t*)&msg->nci_packet, p_core_init_rsp_params, size);
 
     OSI_queue_put(nfc_hal_info.msg_q, (void*)msg);
+  }
+  OSI_logt("exit;");
+  return 0;
+}
+
+int nfc_hal_core_initialized_for_aidl() {
+  tNFC_HAL_MSG* msg;
+
+  OSI_logt("enter;");
+
+  msg = (tNFC_HAL_MSG*)OSI_mem_get(HAL_EVT_SIZE);
+  if (msg != NULL) {
+    msg->event = HAL_EVT_CORE_INIT;
+    OSI_queue_put(nfc_hal_info.msg_q, (void*)msg);
+  }
+  else {
+    OSI_loge("msg is null;");
   }
   OSI_logt("exit;");
   return 0;
@@ -294,6 +293,14 @@ int nfc_hal_power_cycle() {
 
   OSI_logt("exit;");
   return 0;
+}
+
+void nfc_hal_setLogging(bool enable) {
+  nfc_debug_enabled = enable;
+}
+
+bool nfc_hal_isLoggingEnabled() {
+  return nfc_debug_enabled;
 }
 
 void setSleepTimeout(int option, uint32_t timeout) {
