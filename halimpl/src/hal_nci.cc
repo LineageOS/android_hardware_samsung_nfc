@@ -23,6 +23,7 @@
 #include "hal_msg.h"
 #include "osi.h"
 #include "util.h"
+#include "config.h"
 
 int hal_nci_send(tNFC_NCI_PKT* pkt) {
   size_t len = (size_t)(pkt->len + NCI_HDR_SIZE);
@@ -115,10 +116,13 @@ void get_clock_info(int rev, int field_name, int* buffer) {
 
   sprintf(rev_field, "%s_REV%d", cfg_name_table[field_name], rev);
   isRevField = get_config_count(rev_field);
-  if (rev >= 0 && isRevField) {
-    if (!get_config_int(rev_field, buffer)) *buffer = 0;
-  } else if (!get_config_int(cfg_name_table[field_name], buffer))
-    *buffer = 0;
+  if (rev < 0 || isRevField == 0) {
+    if (!GetNumValue(cfg_name_table[field_name], buffer, 4))
+            *buffer = 0;
+  } else {
+        if (!GetNumValue(rev_field, buffer, 4))
+            *buffer = 0;
+  }
 }
 
 void hal_nci_send_prop_fw_cfg(uint8_t product) {
