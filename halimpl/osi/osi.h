@@ -1,19 +1,21 @@
 /*
- *    Copyright (C) 2013 SAMSUNG S.LSI
+*    Copyright (C) 2013 SAMSUNG S.LSI
+*
+*   Licensed under the Apache License, Version 2.0 (the "License");
+*   you may not use this file except in compliance with the License.
+*   You may obtain a copy of the License at:
+*
+*   http://www.apache.org/licenses/LICENSE-2.0
+*
+*   Unless required by applicable law or agreed to in writing, software
+*   distributed under the License is distributed on an "AS IS" BASIS,
+*   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*   See the License for the specific language governing permissions and
+*   limitations under the License.
  *
- *   Licensed under the Apache License, Version 2.0 (the "License");
- *   you may not use this file except in compliance with the License.
- *   You may obtain a copy of the License at:
+*   Author: Woonki Lee <woonki84.lee@samsung.com>
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- *   Unless required by applicable law or agreed to in writing, software
- *   distributed under the License is distributed on an "AS IS" BASIS,
- *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *   See the License for the specific language governing permissions and
- *   limitations under the License.
- *
- */
+*/
 
 #ifndef OSI_H
 #define OSI_H
@@ -72,7 +74,7 @@ void OSI_delay(uint32_t timeout);
  * Return       OSI_TASK_HANDLE if allocate is succeeded,
  *              NULL if any problem.
  */
-tOSI_TASK_HANDLER OSI_task_allocate(const char* task_name,
+tOSI_TASK_HANDLER OSI_task_allocate(const char *task_name,
                                     tOSI_TASK_ENTRY task_entry);
 
 /*
@@ -90,7 +92,7 @@ OSI_STATE OSI_task_run(tOSI_TASK_HANDLER task_handler);
 /*
  * Function     OSI_task_isRun
  *
- * Description  Check the task is running or not.
+ * Description  Check the task is runing or not.
  *
  * Parameter    task_handler(input): Target task handler to check running
  *
@@ -145,7 +147,7 @@ OSI_STATE OSI_task_free(tOSI_TASK_HANDLER task_handler);
  * Return       tOSI_TASK_HANDLER, on success.
  *              NULL, on error.
  */
-tOSI_TASK_HANDLER OSI_task_get_handler(char* name);
+tOSI_TASK_HANDLER OSI_task_get_handler(char *name);
 
 /***************
  *  OSI MEMORY
@@ -185,7 +187,7 @@ void OSI_mem_free(tOSI_MEM_HANDLER target);
  * Return       tOSI_QUEUE_HANDLER if init is succeeded.
  *              NULL if any problem.
  */
-tOSI_QUEUE_HANDLER OSI_queue_allocate(const char* que_name);
+tOSI_QUEUE_HANDLER OSI_queue_allocate(const char *que_name);
 
 /*
  * Function     OSI_queue_put
@@ -198,7 +200,7 @@ tOSI_QUEUE_HANDLER OSI_queue_allocate(const char* que_name);
  * Return       number of element in target queue
  *
  */
-int OSI_queue_put(tOSI_QUEUE_HANDLER queue, void* p_data);
+int OSI_queue_put(tOSI_QUEUE_HANDLER queue, void *p_data);
 
 /*
  * Function     OSI_queue_get
@@ -210,7 +212,7 @@ int OSI_queue_put(tOSI_QUEUE_HANDLER queue, void* p_data);
  * Return       (void *) the first data in the queue.
  *              NULL if any problem.
  */
-void* OSI_queue_get(tOSI_QUEUE_HANDLER queue);
+void *OSI_queue_get(tOSI_QUEUE_HANDLER queue);
 
 /*
  * Function     OSI_queue_get_wait
@@ -224,7 +226,7 @@ void* OSI_queue_get(tOSI_QUEUE_HANDLER queue);
  * Return       (void *) the first data in the queue.
  *              NULL if any problem.
  */
-void* OSI_queue_get_wait(tOSI_QUEUE_HANDLER target);
+void *OSI_queue_get_wait(tOSI_QUEUE_HANDLER target);
 
 /*
  * Function     OSI_queue_free
@@ -247,7 +249,7 @@ void OSI_queue_free(tOSI_QUEUE_HANDLER target);
  * Return       tOSI_QUEUE_HANDLER, on success.
  *              NULL, on error.
  */
-tOSI_QUEUE_HANDLER OSI_queue_get_handler(const char* name);
+tOSI_QUEUE_HANDLER OSI_queue_get_handler(const char *name);
 
 /***************
  *  OSI TIMER
@@ -262,7 +264,7 @@ tOSI_QUEUE_HANDLER OSI_queue_get_handler(const char* name);
  * Return       0 if any problem
  *              other if initialization is succeeded.
  */
-tOSI_TIMER_HANDLER OSI_timer_allocate(const char* timer_name);
+tOSI_TIMER_HANDLER OSI_timer_allocate(const char *timer_name);
 
 /*
  * Function     OSI_timer_start
@@ -278,7 +280,7 @@ tOSI_TIMER_HANDLER OSI_timer_allocate(const char* timer_name);
  *
  */
 int OSI_timer_start(tOSI_TIMER_HANDLER timer, uint32_t timeout,
-                    tOSI_TIMER_CALLBACK callback, void* param);
+                    tOSI_TIMER_CALLBACK callback, void *param);
 
 /*
  * Function     OSI_timer_stop
@@ -314,7 +316,7 @@ void OSI_timer_free(tOSI_TIMER_HANDLER timer);
  * Return       tOSI_QUEUE_HANDLER, on success.
  *              NULL, on error.
  */
-tOSI_TIMER_HANDLER OSI_timer_get_handler(char* name);
+tOSI_TIMER_HANDLER OSI_timer_get_handler(char *name);
 
 /***************
  *  OSI DEBUG

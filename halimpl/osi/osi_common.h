@@ -1,19 +1,21 @@
 /*
- *    Copyright (C) 2013 SAMSUNG S.LSI
+*    Copyright (C) 2013 SAMSUNG S.LSI
+*
+*   Licensed under the Apache License, Version 2.0 (the "License");
+*   you may not use this file except in compliance with the License.
+*   You may obtain a copy of the License at:
+*
+*   http://www.apache.org/licenses/LICENSE-2.0
  *
- *   Licensed under the Apache License, Version 2.0 (the "License");
- *   you may not use this file except in compliance with the License.
- *   You may obtain a copy of the License at:
+*   Unless required by applicable law or agreed to in writing, software
+*   distributed under the License is distributed on an "AS IS" BASIS,
+*   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*   See the License for the specific language governing permissions and
+*   limitations under the License.
+*
+*   Author: Woonki Lee <woonki84.lee@samsung.com>
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- *   Unless required by applicable law or agreed to in writing, software
- *   distributed under the License is distributed on an "AS IS" BASIS,
- *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *   See the License for the specific language governing permissions and
- *   limitations under the License.
- *
- */
+*/
 
 #ifndef OSI_COMMON_H
 #define OSI_COMMON_H
@@ -59,42 +61,42 @@ typedef uint8_t OSI_STATE;
 typedef void (*tOSI_TASK_ENTRY)(void);
 typedef struct {
   pthread_t task;
-  const char* name;
+  const char *name;
   OSI_STATE state;
   tOSI_TASK_ENTRY task_entry;
 } sOSI_TASK;
-typedef sOSI_TASK*(tOSI_TASK_HANDLER);
+typedef sOSI_TASK *(tOSI_TASK_HANDLER);
 
 /* OSI memory */
 typedef struct {
   uint8_t buffer[OSI_MEM_POOL_SIZE];
   OSI_STATE state;
 } sOSI_MEM;
-typedef sOSI_MEM*(tOSI_MEM_HANDLER);
+typedef sOSI_MEM *(tOSI_MEM_HANDLER);
 
 /* OSI queue */
 typedef struct {
-  void* queue[OSI_QUEUE_SIZE];
+  void *queue[OSI_QUEUE_SIZE];
   int head;
   int tail;
-  const char* name;
+  const char *name;
   OSI_STATE state;
   pthread_cond_t cond;
 } sOSI_QUEUE;
-typedef sOSI_QUEUE*(tOSI_QUEUE_HANDLER);
+typedef sOSI_QUEUE *(tOSI_QUEUE_HANDLER);
 
 /* OSI timer */
-typedef void (*tOSI_TIMER_CALLBACK)(void* param);
+typedef void (*tOSI_TIMER_CALLBACK)(void *param);
 typedef struct {
   int32_t exact_time;
   int32_t init_timeout;
   int32_t timeout;
-  const char* name;
+  const char *name;
   tOSI_TIMER_CALLBACK callback;
-  void* callback_param;
+  void *callback_param;
   OSI_STATE state;
 } sOSI_TIMER;
-typedef sOSI_TIMER*(tOSI_TIMER_HANDLER);
+typedef sOSI_TIMER *(tOSI_TIMER_HANDLER);
 
 /* OSI Context */
 typedef struct {
@@ -108,7 +110,7 @@ typedef struct {
 #ifndef OSI_USE_DYNAMIC_BUF
   sOSI_MEM mem[OSI_MAX_MEM_POOL];
 #else
-  sOSI_MEM* mem[OSI_MAX_MEM_POOL];
+  sOSI_MEM *mem[OSI_MAX_MEM_POOL];
 #endif
   int32_t mem_max_cnt; /* Maximum number of allocated memory pool */
 
@@ -128,7 +130,7 @@ typedef struct {
 /************************************************************************
 ** Global variable
 *************************************************************************/
-extern tOSI_INFO osi_info;
+extern tOSI_INFO   osi_info;
 
 /************************************************************************
 ** Internal functions

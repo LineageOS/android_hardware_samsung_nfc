@@ -1,31 +1,33 @@
 /*
- *    Copyright (C) 2013 SAMSUNG S.LSI
+*    Copyright (C) 2013 SAMSUNG S.LSI
+*
+*   Licensed under the Apache License, Version 2.0 (the "License");
+*   you may not use this file except in compliance with the License.
+*   You may obtain a copy of the License at:
+*
+*   http://www.apache.org/licenses/LICENSE-2.0
  *
- *   Licensed under the Apache License, Version 2.0 (the "License");
- *   you may not use this file except in compliance with the License.
- *   You may obtain a copy of the License at:
+*   Unless required by applicable law or agreed to in writing, software
+*   distributed under the License is distributed on an "AS IS" BASIS,
+*   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*   See the License for the specific language governing permissions and
+*   limitations under the License.
+*
+*   Author: Woonki Lee <woonki84.lee@samsung.com>
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- *   Unless required by applicable law or agreed to in writing, software
- *   distributed under the License is distributed on an "AS IS" BASIS,
- *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *   See the License for the specific language governing permissions and
- *   limitations under the License.
- *
- */
+*/
 
+#include "osi.h"
 #include <pthread.h>
 #include <stdlib.h>
-#include <string.h>
 #include "hal.h"
-#include "osi.h"
+#include <string.h>
 
 #include <errno.h>
 #include <time.h>
 
 int osi_debug_level;
-tOSI_INFO osi_info;
+tOSI_INFO   osi_info;
 
 OSI_STATE OSI_init(void) {
   int32_t index;
@@ -46,7 +48,7 @@ OSI_STATE OSI_init(void) {
 #ifdef OSI_USE_DYNAMIC_BUF
     osi_info.mem[index] = (tOSI_MEM_HANDLER)malloc(OSI_MEM_POOL_SIZE);
     if (osi_info.mem[index] == NULL) {
-      OSI_loge("%s : maximum conut of buffer is set to %d, (expected: %d)",
+      OSI_loge("%s : maximun conut of buffer is set to %d, (expected: %d)",
                index, OSI_MAX_MEM_POOL);
       osi_info.mem_max_cnt = index;
       break;

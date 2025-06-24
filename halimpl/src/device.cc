@@ -13,6 +13,8 @@
  *   See the License for the specific language governing permissions and
  *   limitations under the License.
  *
+ *   Author: Woonki Lee <woonki84.lee@samsung.com>
+ *   Version: 2.0
  *
  */
 
@@ -39,6 +41,7 @@ pthread_mutex_t tr_lock;
 int tr_closer;
 bool isSleep;
 int wakeup_delay;
+bool isUART;
 bool log_ptr;
 eNFC_DEV_MODE dev_state;
 tOSI_TASK_HANDLER read_task;
@@ -47,11 +50,51 @@ tOSI_TASK_HANDLER read_task;
 bool first_wakeup;
 // [End] Workaround - i2c write fail(self wakeup)
 void read_thread(void);
-void data_trace(const char* head, int len, uint8_t* p_data);
+void data_trace(const char *head, int len, uint8_t *p_data);
+
+int setup_uart(int dev, unsigned int speed) {
+  struct termios termios;
+  int ret = 0;
+  int status;
+
+  memset((void *)&termios, (int)0, (size_t)sizeof(struct termios));
+
+  ret = fcntl(dev, F_SETFL, 0);
+  if (speed > 0) {
+    cfsetispeed(&termios, (speed_t)speed);
+    cfsetospeed(&termios, (speed_t)speed);
+  } else {
+    cfsetispeed(&termios, B115200);
+    cfsetospeed(&termios, B115200);
+  }
+
+  termios.c_cflag |= CS8 | CLOCAL | CREAD | CRTSCTS;
+  termios.c_iflag = IGNPAR;
+
+  termios.c_oflag = 0;
+  termios.c_lflag = 0;
+
+  termios.c_cc[VTIME] = 20;
+  termios.c_cc[VMIN] = 0;
+
+  ret = tcsetattr(dev, TCSANOW, &termios);
+  if (ret == -1) {
+    OSI_loge("tcsetattr failed");
+    return -1;
+  }
+
+  ret = ioctl(dev, TIOCMGET, &status);
+  status &= ~TIOCM_DTR;
+  ret = ioctl(dev, TIOCMSET, &status);
+  tcflush(dev, TCIOFLUSH);
+
+  return 0;
+}
 
 int device_init(int data_trace) {
   dev_state = NFC_DEV_MODE_OFF;
   log_ptr = data_trace;
+  isUART = false;
 
   read_task = OSI_task_allocate("read_task", read_thread);
   if (!read_task) {
@@ -90,7 +133,17 @@ int device_open() {
     return pw_driver;
   }
 
-  tr_driver = pw_driver;
+  if (strcmp(pw_driver_name, tr_driver_name)) {
+    isUART = true;  // TODO: how to?
+    tr_driver = open(tr_driver_name, O_RDWR | O_NOCTTY);
+    if (tr_driver < 0) {
+      close(pw_driver);
+      OSI_loge("Failed to open device driver: %s", tr_driver_name);
+      return tr_driver;
+    }
+    setup_uart(tr_driver, B115200);
+  } else
+    tr_driver = pw_driver;
 
   OSI_loge("pw_driver: %d, tr_driver: %d", pw_driver, tr_driver);
   device_set_mode(NFC_DEV_MODE_BOOTLOADER);
@@ -129,8 +182,13 @@ int device_set_mode(eNFC_DEV_MODE mode) {
   OSI_logt("device mode chage: %d -> %d", dev_state, mode);
   ret = ioctl(pw_driver, SEC_NFC_SET_MODE, (int)mode);
   if (!ret) {
-    if (mode == NFC_DEV_MODE_ON) isSleep = true;
+    if (mode == NFC_DEV_MODE_BOOTLOADER && mode != dev_state)
+      nfc_hal_info.fw_info.seq_no = 0;
+    else if (mode == NFC_DEV_MODE_ON)
+      isSleep = true;
     dev_state = mode;
+
+    if (isUART) tcflush(tr_driver, TCIOFLUSH);
   }
 
   return ret;
@@ -167,7 +225,7 @@ int device_wakeup(void) {
   return ret;
 }
 
-int device_write(uint8_t* data, size_t len) {
+int device_write(uint8_t *data, size_t len) {
   OSI_logt("enter");
   int ret = 0;
   int total = 0;
@@ -209,7 +267,7 @@ int device_write(uint8_t* data, size_t len) {
   return total;
 }
 
-int device_read(uint8_t* buffer, size_t len) {
+int device_read(uint8_t *buffer, size_t len) {
   int ret = 0;
   int total = 0;
   int retry = 1;
@@ -231,13 +289,13 @@ int device_read(uint8_t* buffer, size_t len) {
 
 void read_thread(void) {
   tOSI_QUEUE_HANDLER msg_que = NULL;
-  tNFC_HAL_MSG* msg = NULL;
+  tNFC_HAL_MSG *msg = NULL;
   fd_set rfds;
   uint8_t header[NCI_HDR_SIZE];
   int close_pipe[2];
   int max_fd;
   struct timeval tv;
-  struct timeval* ptv = NULL;
+  struct timeval *ptv = NULL;
   int ret;
 
   OSI_logt("enter");
@@ -303,7 +361,7 @@ void read_thread(void) {
       continue;
     }
 
-    msg = (tNFC_HAL_MSG*)OSI_mem_get(NCI_CTRL_SIZE);
+    msg = (tNFC_HAL_MSG *)OSI_mem_get(NCI_CTRL_SIZE);
     if (!msg) {
       OSI_loge("Failed to allocate memory!1");
       nfc_stack_cback(HAL_NFC_ERROR_EVT, HAL_NFC_STATUS_OK);
@@ -313,9 +371,9 @@ void read_thread(void) {
     /* payload will read upper layer */
 
     msg->event = HAL_EVT_READ;
-    memcpy((void*)msg->param, (void*)header, NCI_HDR_SIZE);
+    memcpy((void *)msg->param, (void *)header, NCI_HDR_SIZE);
 
-    ret = OSI_queue_put(msg_que, (void*)msg);
+    ret = OSI_queue_put(msg_que, (void *)msg);
     OSI_logd("Sent message to HAL message task, remind que: %d", ret);
   }
 
@@ -329,7 +387,7 @@ void read_thread(void) {
 }
 
 #define TRACE_BUFFER_SIZE (NCI_CTRL_SIZE * 3 + 1)
-void data_trace(const char* head, int len, uint8_t* p_data) {
+void data_trace(const char *head, int len, uint8_t *p_data) {
   int i = 0, header;
   char trace_buffer[TRACE_BUFFER_SIZE + 2];
 

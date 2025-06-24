@@ -1,29 +1,30 @@
 /*
- *    Copyright (C) 2013 SAMSUNG S.LSI
+*    Copyright (C) 2013 SAMSUNG S.LSI
+*
+*   Licensed under the Apache License, Version 2.0 (the "License");
+*   you may not use this file except in compliance with the License.
+*   You may obtain a copy of the License at:
+*
+*   http://www.apache.org/licenses/LICENSE-2.0
  *
- *   Licensed under the Apache License, Version 2.0 (the "License");
- *   you may not use this file except in compliance with the License.
- *   You may obtain a copy of the License at:
+*   Unless required by applicable law or agreed to in writing, software
+*   distributed under the License is distributed on an "AS IS" BASIS,
+*   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*   See the License for the specific language governing permissions and
+*   limitations under the License.
+*
+*   Author: Woonki Lee <woonki84.lee@samsung.com>
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- *   Unless required by applicable law or agreed to in writing, software
- *   distributed under the License is distributed on an "AS IS" BASIS,
- *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *   See the License for the specific language governing permissions and
- *   limitations under the License.
- *
- *
- */
+*/
 
 /************************************************************************
 ** OS interface for task handling
 *************************************************************************/
+#include "osi.h"
 #include <errno.h>
 #include <pthread.h>
 #include <string.h>
 #include <sys/time.h>
-#include "osi.h"
 
 /************************************************************************
 ** Internal function prototype
@@ -33,7 +34,7 @@ void timer_thread(void);
 /************************************************************************
 ** Public functions
 *************************************************************************/
-tOSI_TIMER_HANDLER OSI_timer_allocate(const char* timer_name) {
+tOSI_TIMER_HANDLER OSI_timer_allocate(const char *timer_name) {
   tOSI_TIMER_HANDLER free_timer = NULL;
   int index;
 
@@ -43,10 +44,10 @@ tOSI_TIMER_HANDLER OSI_timer_allocate(const char* timer_name) {
       if (free_timer == NULL)
         free_timer = (tOSI_TIMER_HANDLER)&osi_info.timer[index];
     } else {
-      if ((char const*)osi_info.timer[index].name == NULL) continue;
+      if ((char const *)osi_info.timer[index].name == NULL) continue;
 
-      if (strcmp((char const*)osi_info.timer[index].name,
-                 (char const*)timer_name) == 0) {
+      if (strcmp((char const *)osi_info.timer[index].name,
+                 (char const *)timer_name) == 0) {
         OSI_loge("%s : %s timer is already allocated [%d]", __func__,
                  timer_name, index);
         free_timer = NULL;
@@ -71,7 +72,7 @@ tOSI_TIMER_HANDLER OSI_timer_allocate(const char* timer_name) {
 }
 
 int OSI_timer_start(tOSI_TIMER_HANDLER timer, uint32_t timeout,
-                    tOSI_TIMER_CALLBACK callback, void* param) {
+                    tOSI_TIMER_CALLBACK callback, void *param) {
   pthread_attr_t attr;
   int ret_th;
 
@@ -106,7 +107,7 @@ int OSI_timer_start(tOSI_TIMER_HANDLER timer, uint32_t timeout,
 
         OSI_logt("before pthread_create for timer thread");
         ret_th = pthread_create(&osi_info.timer_thread, &attr,
-                                (void* (*)(void*))timer_thread, NULL);
+                                (void *(*)(void *))timer_thread, NULL);
         OSI_logt("after pthread_create for timer thread");
         if (ret_th != 0)
           OSI_loge("%s : Error to create timer_thread! ,erron: %d", __func__,
@@ -160,7 +161,7 @@ void OSI_timer_free(tOSI_TIMER_HANDLER timer) {
   }
 }
 
-tOSI_TIMER_HANDLER OSI_timer_get_handler(char* name) {
+tOSI_TIMER_HANDLER OSI_timer_get_handler(char *name) {
   tOSI_TIMER_HANDLER timer = NULL;
   int index;
 
@@ -168,9 +169,9 @@ tOSI_TIMER_HANDLER OSI_timer_get_handler(char* name) {
 
   osi_lock();
   for (index = 0; index < OSI_MAX_TIMER; index++) {
-    if ((char const*)osi_info.timer[index].name == NULL) continue;
+    if ((char const *)osi_info.timer[index].name == NULL) continue;
 
-    if (strcmp((char const*)osi_info.timer[index].name, (char const*)name) ==
+    if (strcmp((char const *)osi_info.timer[index].name, (char const *)name) ==
         0) {
       timer = &osi_info.timer[index];
       break;
@@ -183,7 +184,7 @@ tOSI_TIMER_HANDLER OSI_timer_get_handler(char* name) {
 
 int32_t OSI_timer_get_current_time() {
   struct timeval sec;
-  struct tm* now;
+  struct tm *now;
   time_t rawtime;
 
   gettimeofday(&sec, NULL);

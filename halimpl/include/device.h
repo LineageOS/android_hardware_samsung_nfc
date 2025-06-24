@@ -13,6 +13,8 @@
  *   See the License for the specific language governing permissions and
  *   limitations under the License.
  *
+ *   Author: Woonki Lee <woonki84.lee@samsung.com>
+ *   Version: 2.0
  *
  */
 
@@ -26,6 +28,6 @@ void device_close(void);
 int device_set_mode(eNFC_DEV_MODE mode);
 int device_sleep(void);
 int device_wakeup(void);
-int device_write(uint8_t* data, size_t len);
-int device_read(uint8_t* buffer, size_t len);
-void data_trace(const char* head, int len, uint8_t* p_data);
+int device_write(uint8_t *data, size_t len);
+int device_read(uint8_t *buffer, size_t len);
+void data_trace(const char *head, int len, uint8_t *p_data);

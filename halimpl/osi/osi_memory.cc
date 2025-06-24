@@ -1,28 +1,29 @@
 /*
- *    Copyright (C) 2013 SAMSUNG S.LSI
+*    Copyright (C) 2013 SAMSUNG S.LSI
+*
+*   Licensed under the Apache License, Version 2.0 (the "License");
+*   you may not use this file except in compliance with the License.
+*   You may obtain a copy of the License at:
+*
+*   http://www.apache.org/licenses/LICENSE-2.0
  *
- *   Licensed under the Apache License, Version 2.0 (the "License");
- *   you may not use this file except in compliance with the License.
- *   You may obtain a copy of the License at:
+*   Unless required by applicable law or agreed to in writing, software
+*   distributed under the License is distributed on an "AS IS" BASIS,
+*   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*   See the License for the specific language governing permissions and
+*   limitations under the License.
+*
+*   Author: Woonki Lee <woonki84.lee@samsung.com>
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- *   Unless required by applicable law or agreed to in writing, software
- *   distributed under the License is distributed on an "AS IS" BASIS,
- *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *   See the License for the specific language governing permissions and
- *   limitations under the License.
- *
- *
- */
+*/
 
 /************************************************************************
 ** OS interface for task handling
 *************************************************************************/
+#include "osi.h"
 #include <pthread.h>
 #include <sched.h>
 #include <string.h>
-#include "osi.h"
 
 /************************************************************************
 ** Internal function prototype
@@ -37,7 +38,7 @@ tOSI_MEM_HANDLER OSI_mem_get(size_t size) {
 
   if (size > OSI_MEM_POOL_SIZE) {
     OSI_loge("%s : memory getting failed. Max size=%d, Requested size=%d",
-             __func__, OSI_MEM_POOL_SIZE, (int)size);
+             __func__, OSI_MEM_POOL_SIZE,(int) size);
     return NULL;
   }
 
@@ -94,7 +95,7 @@ void OSI_mem_free(tOSI_MEM_HANDLER target) {
   osi_unlock();
 }
 
-tOSI_QUEUE_HANDLER OSI_queue_allocate(const char* que_name) {
+tOSI_QUEUE_HANDLER OSI_queue_allocate(const char *que_name) {
   tOSI_QUEUE_HANDLER free_que = NULL;
   int index;
 
@@ -106,8 +107,8 @@ tOSI_QUEUE_HANDLER OSI_queue_allocate(const char* que_name) {
     } else {
       if (osi_info.queue[index].name == NULL) continue;
 
-      if (strcmp((char const*)osi_info.queue[index].name,
-                 (char const*)que_name) == 0) {
+      if (strcmp((char const *)osi_info.queue[index].name,
+                 (char const *)que_name) == 0) {
         OSI_loge("%s : %s queue is already allocated [%d]", __func__, que_name,
                  index);
         free_que = NULL;
@@ -131,7 +132,7 @@ tOSI_QUEUE_HANDLER OSI_queue_allocate(const char* que_name) {
   return free_que;
 }
 
-int OSI_queue_put(tOSI_QUEUE_HANDLER queue, void* p_data) {
+int OSI_queue_put(tOSI_QUEUE_HANDLER queue, void *p_data) {
   int ret;
 
   osi_lock();
@@ -160,8 +161,8 @@ int OSI_queue_put(tOSI_QUEUE_HANDLER queue, void* p_data) {
   return ret;
 }
 
-void* queue_get(tOSI_QUEUE_HANDLER queue) {
-  void* data = NULL;
+void *queue_get(tOSI_QUEUE_HANDLER queue) {
+  void *data = NULL;
 
   if (!queue || queue->state != OSI_ALLOCATED) {
     OSI_loge("%s : queue is not allocated", __func__);
@@ -189,8 +190,8 @@ void* queue_get(tOSI_QUEUE_HANDLER queue) {
   return data;
 }
 
-void* OSI_queue_get(tOSI_QUEUE_HANDLER queue) {
-  void* data = NULL;
+void *OSI_queue_get(tOSI_QUEUE_HANDLER queue) {
+  void *data = NULL;
 
   osi_lock();
   data = queue_get(queue);
@@ -199,8 +200,8 @@ void* OSI_queue_get(tOSI_QUEUE_HANDLER queue) {
   return data;
 }
 
-void* OSI_queue_get_wait(tOSI_QUEUE_HANDLER queue) {
-  void* ret;
+void *OSI_queue_get_wait(tOSI_QUEUE_HANDLER queue) {
+  void *ret;
 
   osi_lock();
 
@@ -227,7 +228,7 @@ void OSI_queue_free(tOSI_QUEUE_HANDLER target) {
   }
 }
 
-tOSI_QUEUE_HANDLER OSI_queue_get_handler(const char* name) {
+tOSI_QUEUE_HANDLER OSI_queue_get_handler(const char *name) {
   tOSI_QUEUE_HANDLER queue = NULL;
   int index;
 
@@ -237,7 +238,7 @@ tOSI_QUEUE_HANDLER OSI_queue_get_handler(const char* name) {
   for (index = 0; index < OSI_MAX_QUEUE; index++) {
     if (osi_info.queue[index].name == NULL) continue;
 
-    if (strcmp((char const*)osi_info.queue[index].name, (char const*)name) ==
+    if (strcmp((char const *)osi_info.queue[index].name, (char const *)name) ==
         0) {
       queue = (tOSI_QUEUE_HANDLER)&osi_info.queue[index];
       break;

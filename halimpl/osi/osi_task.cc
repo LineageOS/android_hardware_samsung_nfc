@@ -1,28 +1,29 @@
 /*
- *    Copyright (C) 2013 SAMSUNG S.LSI
+*    Copyright (C) 2013 SAMSUNG S.LSI
+*
+*   Licensed under the Apache License, Version 2.0 (the "License");
+*   you may not use this file except in compliance with the License.
+*   You may obtain a copy of the License at:
+*
+*   http://www.apache.org/licenses/LICENSE-2.0
  *
- *   Licensed under the Apache License, Version 2.0 (the "License");
- *   you may not use this file except in compliance with the License.
- *   You may obtain a copy of the License at:
+*   Unless required by applicable law or agreed to in writing, software
+*   distributed under the License is distributed on an "AS IS" BASIS,
+*   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*   See the License for the specific language governing permissions and
+*   limitations under the License.
+*
+*   Author: Woonki Lee <woonki84.lee@samsung.com>
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- *   Unless required by applicable law or agreed to in writing, software
- *   distributed under the License is distributed on an "AS IS" BASIS,
- *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *   See the License for the specific language governing permissions and
- *   limitations under the License.
- *
- *
- */
+*/
 
 /************************************************************************
 ** OS interface for task handling
 *************************************************************************/
+#include "osi.h"
 #include <pthread.h>
 #include <signal.h>
 #include <string.h>
-#include "osi.h"
 
 /************************************************************************
 ** Internal function prototype
@@ -31,7 +32,7 @@
 /************************************************************************
 ** Public functions
 *************************************************************************/
-void osi_task_entry(void* arg) {
+void osi_task_entry(void *arg) {
   tOSI_TASK_ENTRY task_entry = (tOSI_TASK_ENTRY)arg;
 
   // pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
@@ -42,7 +43,7 @@ void osi_task_entry(void* arg) {
   pthread_exit(NULL);
 }
 
-tOSI_TASK_HANDLER OSI_task_allocate(const char* task_name,
+tOSI_TASK_HANDLER OSI_task_allocate(const char *task_name,
                                     tOSI_TASK_ENTRY task_entry) {
   tOSI_TASK_HANDLER free_task = NULL;
   int index;
@@ -57,8 +58,8 @@ tOSI_TASK_HANDLER OSI_task_allocate(const char* task_name,
       if (osi_info.task[index].name == NULL) continue;
 
       /* User can't not make same name of task */
-      if (strcmp((char const*)osi_info.task[index].name,
-                 (char const*)task_name) == 0) {
+      if (strcmp((char const *)osi_info.task[index].name,
+                 (char const *)task_name) == 0) {
         OSI_loge("%s : %s task is already allocated [%d]", __func__, task_name,
                  index);
         free_task = NULL;
@@ -91,9 +92,8 @@ OSI_STATE OSI_task_run(tOSI_TASK_HANDLER task_handler) {
   } else {
     /* Thread attr configuration */
     pthread_attr_init(&attr);
-    if (!pthread_create(&(task_handler->task), &attr,
-                        (void* (*)(void*))osi_task_entry,
-                        (void*)(task_handler->task_entry))) {  //
+    if (!pthread_create(&(task_handler->task), &attr, 
+      (void *(*)(void *))osi_task_entry, (void *)(task_handler->task_entry)) ) { //
       task_handler->state = OSI_RUN;
       ret = OSI_OK;
     } else {
@@ -164,7 +164,7 @@ OSI_STATE OSI_task_kill(tOSI_TASK_HANDLER task_handler) {
   return ret;
 }
 
-tOSI_TASK_HANDLER OSI_task_get_handler(char* name) {
+tOSI_TASK_HANDLER OSI_task_get_handler(char *name) {
   tOSI_TASK_HANDLER task = NULL;
   int index;
 
@@ -172,9 +172,9 @@ tOSI_TASK_HANDLER OSI_task_get_handler(char* name) {
 
   osi_lock();
   for (index = 0; index < OSI_MAX_TASK; index++) {
-    if ((char const*)osi_info.task[index].name == NULL) continue;
+    if ((char const *)osi_info.task[index].name == NULL) continue;
 
-    if (strcmp((char const*)osi_info.task[index].name, (char const*)name) ==
+    if (strcmp((char const *)osi_info.task[index].name, (char const *)name) ==
         0) {
       task = &osi_info.task[index];
       break;
