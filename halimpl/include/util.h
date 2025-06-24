@@ -13,7 +13,6 @@
  *   See the License for the specific language governing permissions and
  *   limitations under the License.
  *
- *
  */
 #ifndef __NFC_SEC_HALUTIL__
 #define __NFC_SEC_HALUTIL__
@@ -28,8 +27,10 @@ typedef enum { false, true } bool;
 #define HAL_UTIL_GET_INT_16 0x0001
 
 bool get_config_int(const char* field, int* data);
+int get_config_byteArry(const char* field, uint8_t* byteArry, size_t arrySize);
 int get_config_string(const char* field, char* strBuffer, size_t bufferSize);
 int get_config_count(const char* field);
+uint8_t get_config_propnci_get_oid(int n);
 int get_hw_rev();
 
 #ifdef NFC_HAL_NCI_TRACE
