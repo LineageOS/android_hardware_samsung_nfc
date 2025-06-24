@@ -13,7 +13,6 @@
  *   See the License for the specific language governing permissions and
  *   limitations under the License.
  *
- *
  */
 
 #include <hardware/nfc.h>
@@ -92,6 +91,22 @@ void hal_nci_send_clearLmrt(void) {
 }
 /* END WA */
 
+void hal_nci_send_setSWAPITrace(uint8_t* option, unsigned int len) {
+  tNFC_NCI_PKT nci_pkt;
+  int i = 0;
+
+  memset(&nci_pkt, 0, sizeof(tNFC_NCI_PKT));
+  nci_pkt.oct0 = NCI_MT_CMD | NCI_PBF_LAST | NCI_GID_PROP;
+  nci_pkt.oid = 0x17;
+  nci_pkt.len = len;
+
+  for (i = 0; i < len; i++) {
+    nci_pkt.payload[i] = option[i];
+  }
+
+  hal_nci_send(&nci_pkt);
+}
+
 void get_clock_info(int rev, int field_name, int* buffer) {
   char rev_field[50] = {
       '\0',
@@ -106,7 +121,7 @@ void get_clock_info(int rev, int field_name, int* buffer) {
     *buffer = 0;
 }
 
-void hal_nci_send_prop_fw_cfg(void) {
+void hal_nci_send_prop_fw_cfg(uint8_t product) {
   tNFC_NCI_PKT nci_pkt;
   int rev = get_hw_rev();
 
@@ -114,12 +129,17 @@ void hal_nci_send_prop_fw_cfg(void) {
   nci_pkt.oct0 = NCI_MT_CMD | NCI_PBF_LAST | NCI_GID_PROP;
   nci_pkt.oid = NCI_PROP_FW_CFG;
 
-  nci_pkt.len = 0x01;
-  get_clock_info(rev, CFG_FW_CLK_SPEED, (int*)&nci_pkt.payload[0]);
-  if (nci_pkt.payload[0] == 0xff) {
-    OSI_loge("Set a different value! Current Clock Speed Value : 0x%x",
-             nci_pkt.payload[0]);
-    return;
+  if (product >= SNFC_N7) {
+    nci_pkt.len = 0x01;
+    get_clock_info(rev, CFG_FW_CLK_SPEED, (int *)&nci_pkt.payload[0]);
+    if (nci_pkt.payload[0] == 0xff)
+      OSI_loge("Set a different value! Current Clock Speed Value : 0x%x",
+               nci_pkt.payload[0]);
+  } else {
+    nci_pkt.len = 0x03;
+    get_clock_info(rev, CFG_FW_CLK_TYPE, (int *)&nci_pkt.payload[0]);
+    get_clock_info(rev, CFG_FW_CLK_SPEED, (int *)&nci_pkt.payload[1]);
+    get_clock_info(rev, CFG_FW_CLK_REQ, (int *)&nci_pkt.payload[2]);
   }
   hal_nci_send(&nci_pkt);
 }
@@ -139,12 +159,17 @@ int nci_read_payload(tNFC_HAL_MSG* msg) {
   return ret;
 }
 
-void fw_force_update(__attribute__((unused)) void* param) {
-  OSI_loge("need to F/W update!");
-}
-
 void nci_init_timeout(__attribute__((unused)) void* param) {
-  OSI_loge("need to retry!");
+  tNFC_HAL_FW_INFO* fw = &nfc_hal_info.fw_info;
+  tNFC_HAL_FW_BL_INFO* bl = &fw->bl_info;
+
+  OSI_loge("NCI_INIT_RSP timeout!!");
+  OSI_logd("Try send clk config!");
+  device_set_mode(NFC_DEV_MODE_OFF);
+  device_set_mode(NFC_DEV_MODE_ON);
+  nfc_hal_info.state = HAL_STATE_FW;
+  nfc_hal_info.fw_info.state = FW_W4_NCI_PROP_FW_CFG;
+  hal_nci_send_prop_fw_cfg(bl->product);
 }
 
 bool nfc_hal_prehandler(tNFC_NCI_PKT* pkt) {
@@ -156,7 +181,8 @@ bool nfc_hal_prehandler(tNFC_NCI_PKT* pkt) {
           OSI_logd("NFC requests sending last message again!");
           hal_update_sleep_timer();
           device_write((uint8_t*)nfc_hal_info.nci_last_pkt,
-                       (size_t)(nfc_hal_info.nci_last_pkt->len + NCI_HDR_SIZE));
+                       (size_t)(nfc_hal_info.nci_last_pkt->len
+                       + NCI_HDR_SIZE));
           return false;
         }
       }

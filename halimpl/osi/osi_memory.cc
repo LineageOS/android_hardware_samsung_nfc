@@ -13,7 +13,6 @@
  *   See the License for the specific language governing permissions and
  *   limitations under the License.
  *
- *
  */
 
 /************************************************************************
@@ -70,7 +69,7 @@ retry_getting:
                osi_info.mem_max_cnt);
     } else
 #endif
-        if (--err_cnt > 0) {
+    if (--err_cnt > 0) {
       OSI_loge("%s : try %d time(s) more!", __func__, err_cnt + 1);
       osi_unlock();
       sched_yield();
@@ -237,8 +236,8 @@ tOSI_QUEUE_HANDLER OSI_queue_get_handler(const char* name) {
   for (index = 0; index < OSI_MAX_QUEUE; index++) {
     if (osi_info.queue[index].name == NULL) continue;
 
-    if (strcmp((char const*)osi_info.queue[index].name, (char const*)name) ==
-        0) {
+    if (strcmp((char const*)osi_info.queue[index].name,
+        (char const*)name) == 0) {
       queue = (tOSI_QUEUE_HANDLER)&osi_info.queue[index];
       break;
     }
