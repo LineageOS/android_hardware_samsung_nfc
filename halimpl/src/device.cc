@@ -13,7 +13,6 @@
  *   See the License for the specific language governing permissions and
  *   limitations under the License.
  *
- *
  */
 
 #include <errno.h>
@@ -124,13 +123,23 @@ void device_close(void) {
 }
 
 int device_set_mode(eNFC_DEV_MODE mode) {
+  tNFC_HAL_FW_INFO* fw = &nfc_hal_info.fw_info;
+  tNFC_HAL_FW_BL_INFO* bl = &fw->bl_info;
   int ret;
 
   OSI_logt("device mode chage: %d -> %d", dev_state, mode);
   ret = ioctl(pw_driver, SEC_NFC_SET_MODE, (int)mode);
   if (!ret) {
-    if (mode == NFC_DEV_MODE_ON) isSleep = true;
+    if (mode == NFC_DEV_MODE_BOOTLOADER && mode != dev_state)
+      nfc_hal_info.fw_info.seq_no = 0;
+    else if (mode == NFC_DEV_MODE_ON)
+      isSleep = true;
     dev_state = mode;
+  }
+
+  if (bl->product >= SNFC_SEN6) {
+    OSI_logd("Wait 100ms for firmware boot for SEN6");
+    usleep(100 * 1000);
   }
 
   return ret;
@@ -213,6 +222,15 @@ int device_read(uint8_t* buffer, size_t len) {
   int ret = 0;
   int total = 0;
   int retry = 1;
+
+  // [I2c] Handles exceptions when consecutive IRQ occurred
+  if (len == 0) {
+    ret = read(tr_driver, buffer + total, len);
+    if(ret == 0) {
+      OSI_logt("payload is 0");
+      return total;
+    }
+  }
 
   while (len != 0) {
     ret = read(tr_driver, buffer + total, len);
@@ -311,7 +329,6 @@ void read_thread(void) {
     }
 
     /* payload will read upper layer */
-
     msg->event = HAL_EVT_READ;
     memcpy((void*)msg->param, (void*)header, NCI_HDR_SIZE);
 
@@ -344,3 +361,25 @@ void data_trace(const char* head, int len, uint8_t* p_data) {
 
   if (log_ptr) OSI_logd(" %s(%3d) %s", head, i, trace_buffer);
 }
+
+#ifdef NFC_SEC_ESE_COLDRESET
+void device_ese_coldreset(void) {
+  OSI_logt("enter");
+  int ret = 0;
+  ret = ioctl(pw_driver, SEC_NFC_COLD_RESET, 0);
+  if (ret < 0) {
+    OSI_loge("ese cold reset error = %d", ret);
+  }
+  OSI_logt("exit");
+}
+
+void device_shutdown(void) {
+  OSI_logt("enter");
+  int ret = 0;
+  ret = ioctl(pw_driver, SEC_NFC_SHUTDOWN, 0);
+  if (ret < 0) {
+      OSI_loge("set shutdown error = %d", ret);
+  }
+  OSI_logt("exit");
+}
+#endif

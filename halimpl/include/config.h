@@ -14,7 +14,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
- ******************************************************************************/
+ *****************************************************************************/
 
 /******************************************************************************
  *
@@ -34,7 +34,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
- ******************************************************************************/
+ *****************************************************************************/
 /******************************************************************************
  *
  *  The original Work has been changed by Samsung Electronics.
@@ -54,7 +54,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
- ******************************************************************************/
+ *****************************************************************************/
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
@@ -66,9 +66,6 @@ int GetStrValue(const char* name, char* p_value, unsigned long len);  // SLSI
 int GetNumValue(const char* name, void* p_value, unsigned long len);  // SLSI
 int GetByteArrayValue(const char* name, char* pValue, long bufflen,
                       long* len);  // SLSI
-#if (NFC_SEC_NOT_OPEN_INCLUDED == TRUE)
-void Set_user_prefix(char* field);
-#endif
 
 void resetConfig(void);
 int isConfigModified();
