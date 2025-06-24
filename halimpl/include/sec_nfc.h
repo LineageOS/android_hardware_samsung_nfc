@@ -13,7 +13,6 @@
  *   See the License for the specific language governing permissions and
  *   limitations under the License.
  *
- *
  */
 
 #define SEC_NFC_DRIVER_NAME "sec-nfc"
@@ -24,3 +23,8 @@
 #define SEC_NFC_SET_MODE _IOW(SEC_NFC_MAGIC, 1, unsigned int)
 #define SEC_NFC_SLEEP _IOW(SEC_NFC_MAGIC, 2, unsigned int)
 #define SEC_NFC_WAKEUP _IOW(SEC_NFC_MAGIC, 3, unsigned int)
+#define SEC_NFC_SET_WPT_MODE _IOW(SEC_NFC_MAGIC, 4, unsigned int)
+#ifdef NFC_SEC_ESE_COLDRESET
+#define SEC_NFC_COLD_RESET _IOW(SEC_NFC_MAGIC, 5, unsigned int)
+#define SEC_NFC_SHUTDOWN _IOW(SEC_NFC_MAGIC, 6, unsigned int)
+#endif

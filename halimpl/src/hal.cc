@@ -29,9 +29,7 @@ using namespace android::hardware::nfc::V1_1;
 using android::hardware::nfc::V1_1::NfcEvent;
 tNFC_HAL_CB nfc_hal_info;
 
-/* START - VTS Replay */
 bool sending_nci_packet = false;
-/* END - VTS Replay */
 
 /*************************************
  * Generic device handling.
@@ -51,12 +49,10 @@ bool nfc_data_callback(tNFC_NCI_PKT* pkt) {
   OSI_logt("!");
   if (!nfc_hal_info.data_cback) return false;
 
-  /* START - VTS Replay */
   if (((data[0] >> 4) == 4) && (sending_nci_packet == true)) {
     OSI_logt("clear sendig_nci_packet");
     sending_nci_packet = false;
   }
-  /* END - VTS Replay */
 
   nfc_hal_info.data_cback(len, data);
   return true;
@@ -73,9 +69,7 @@ int nfc_hal_init(void) {
 
   OSI_logt("enter; ========================================");
 
-  /* START - VTS Replay */
   sending_nci_packet = false;
-  /* END - VTS Replay */
 
   /* don't print log at user binary */
   ret = property_get("ro.build.type", valueStr, "");
@@ -111,7 +105,8 @@ int nfc_hal_init(void) {
   setSleepTimeout(SET_SLEEP_TIME_CFG, 5000);
 
   if (!nfc_hal_info.msg_task || !nfc_hal_info.nci_timer ||
-      !nfc_hal_info.sleep_timer || !nfc_hal_info.msg_q || !nfc_hal_info.nci_q) {
+      !nfc_hal_info.sleep_timer || !nfc_hal_info.msg_q ||
+      !nfc_hal_info.nci_q) {
     nfc_hal_deinit();
     return -EPERM;
   }
@@ -153,14 +148,11 @@ int nfc_hal_open(nfc_stack_callback_t* p_cback,
 
   OSI_logt("enter;");
 
-  /* START - VTS */
   if (nfc_hal_info.state == HAL_STATE_POSTINIT) {
     OSI_logt("SAMSUNG Hal already open");
     return 0;
   }
-  /* END - VTS */
 
-  /* Initialize HAL */
   nfc_hal_init();
 
   if (device_open()) return -EPERM;
@@ -188,12 +180,10 @@ int nfc_hal_close() {
 
   OSI_logt("enter;");
 
-  /* START - VTS */
   if (nfc_hal_info.state == HAL_STATE_CLOSE) {
     OSI_logt("SAMSUNG HAL already closed");
-    return 1;  // FAILED
+    return 1;
   }
-  /* END - VTS */
 
   msg = (tNFC_HAL_MSG*)OSI_mem_get(HAL_EVT_SIZE);
   if (msg != NULL) {
@@ -205,13 +195,11 @@ int nfc_hal_close() {
   device_sleep();
   device_close();
 
-  nfc_hal_info.state = HAL_STATE_CLOSE; /* VTS */
+  nfc_hal_info.state = HAL_STATE_CLOSE;
 
   nfc_stack_cback(HAL_NFC_CLOSE_CPLT_EVT, HAL_NFC_STATUS_OK);
 
-  /* START - For higher than Android-8.0 */
   OSI_deinit();
-  /* END - For higher than Android-8.0 */
 
   OSI_logt("exit;");
   return 0;
@@ -222,29 +210,26 @@ int nfc_hal_write(uint16_t data_len, const uint8_t* p_data) {
   size_t size = (size_t)data_len;
 
   OSI_logt("enter;");
-  /* START - VTS Replay */
-  if ((sending_nci_packet == true) && ((p_data[0] >> 4) == 2)) {
+  if ((sending_nci_packet == true) && ((p_data[0] >> 4) == 2)
+      && !(nfc_hal_info.flag & HAL_FLAG_ALREADY_INIT)) {
     OSI_logt("Don't send NCI");
     return size;
   }
-  /* END - VTS Replay */
 
   msg = (tNFC_HAL_MSG*)OSI_mem_get(size + HAL_EVT_SIZE);
   if (msg != NULL) {
     msg->event = HAL_EVT_WRITE;
     memcpy((uint8_t*)&msg->nci_packet, p_data, size);
 
-    /* START - VTS Replay */
     if ((sending_nci_packet == false) && ((p_data[0] >> 4) == 2))
       sending_nci_packet = true;
-    /* END - VTS Replay */
   }
   // changed OIS_queue_put() sequence to meet VTS Replay
   if (OSI_queue_put(nfc_hal_info.msg_q, (void*)msg) == -1)
     sending_nci_packet = false;
 
   OSI_logt("exit;");
-  return size; /* VTS */
+  return size;
 }
 
 int nfc_hal_core_initialized(uint8_t* p_core_init_rsp_params) {
@@ -266,7 +251,6 @@ int nfc_hal_core_initialized(uint8_t* p_core_init_rsp_params) {
 
 int nfc_hal_pre_discover() {
   OSI_logt("enter;");
-  /* START - VTS Replay */
   /*
   tNFC_HAL_MSG *msg;
   msg = (tNFC_HAL_MSG *)OSI_mem_get(HAL_EVT_SIZE);
@@ -275,7 +259,6 @@ int nfc_hal_pre_discover() {
     OSI_queue_put(nfc_hal_info.msg_q, (void *)msg);
   }
   */
-  /* END - VTS Replay */
   OSI_logt("exit;");
   return 0;
 }
@@ -297,7 +280,6 @@ int nfc_hal_control_granted() {
 int nfc_hal_power_cycle() {
   OSI_logt("enter;");
 
-  /* START - VTS */
   tNFC_HAL_MSG* msg;
   if (nfc_hal_info.state == HAL_STATE_CLOSE) {
     OSI_logt("SAMSUNG Hal already closed, ignoring power cycle");
@@ -309,7 +291,6 @@ int nfc_hal_power_cycle() {
     msg->event = HAL_EVT_POWER_CYCLE;
     OSI_queue_put(nfc_hal_info.msg_q, (void*)msg);
   }
-  /* END - VTS */
 
   OSI_logt("exit;");
   return 0;
@@ -347,7 +328,10 @@ int nfc_hal_factory_reset(void) {
 
 int nfc_hal_closeForPowerOffCase(void) {
   OSI_logt("enter;");
-  // TO DO impl
+#ifdef NFC_SEC_ESE_COLDRESET
+  device_shutdown();
+#endif
+  //TO DO impl
   nfc_hal_close();
   OSI_logt("exit;");
 

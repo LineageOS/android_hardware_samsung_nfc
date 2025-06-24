@@ -13,7 +13,6 @@
  *   See the License for the specific language governing permissions and
  *   limitations under the License.
  *
- *
  */
 
 #ifndef __NFC_SEC_HALMSG__
@@ -33,11 +32,7 @@ typedef struct {
   uint8_t len;
   uint8_t payload[NCI_MAX_PAYLOAD];
 } tNFC_NCI_PKT;
-/* START [181106] Patch for supporting NCI v2.0 */
-// [1. NCI Version Management]
-#define NCI_VER_1_0 0x10
-#define NCI_VER_2_0 0x20
-/* END [181106] Patch for supporting NCI v2.0 */
+
 #define NCI_MT(x) ((x)->oct0 & 0xE0)
 #define NCI_PBF(x) ((x)->oct0 & 0x10)
 #define NCI_GID(x) ((x)->oct0 & 0x0F)
@@ -68,7 +63,21 @@ typedef struct {
 #define NCI_PROP_AGAIN                                     \
   0x01 /* This prop oid is used only for N3 (sleep mode) \ \
         */
+#define NCI_PROP_GET_RFREG 0x21
+#define NCI_PROP_SET_RFREG 0x22
+#define NCI_PROP_GET_RFREG_VER 0x24
+#define NCI_PROP_SET_RFREG_VER 0x25
+#define NCI_PROP_START_RFREG 0x26
+#define NCI_PROP_STOP_RFREG 0x27
 #define NCI_PROP_FW_CFG 0x28
+#define NCI_PROP_GET_OPTION_META_OID 0x29
+
+#define NCI_PROP_DUAL_OPTION_OID 0x2A
+#define NCI_PROP_DUAL_OPTION_SUB_OID_GET_VER 0x00
+#define NCI_PROP_DUAL_OPTION_SUB_OID_START_UPDATE 0x01
+#define NCI_PROP_DUAL_OPTION_SUB_OID_SET_OPTION 0x02
+#define NCI_PROP_DUAL_OPTION_SUB_OID_STOP_UPDATE 0x03
+
 #define NCI_PROP_WR_RESET 0x2F
 #define NCI_PROP_SET_SLEEP_TIME 0x1A /* Last updated value: 20160530 */
 
@@ -101,6 +110,50 @@ typedef struct {
 
 /* type */
 typedef enum { FW_MSG_CMD = 0, FW_MSG_RSP, FW_MSG_DATA } eNFC_FW_BLTYPE;
+
+/* commands */
+typedef enum {
+  FW_CMD_RESET = 0,
+  FW_CMD_GET_BOOTINFO,
+  FW_CMD_ENTER_UPDATEMODE,
+  FW_CMD_UPDATE_PAGE,
+  FW_CMD_UPDATE_SECT,
+  FW_CMD_COMPLETE_UPDATE_MODE,
+#ifdef NFC_SEC_ESE_COLDRESET
+  FW_CMD_DISABLE_COMBO_COLDRESET = 8
+#endif
+} eNFC_FW_BLCMD;
+
+/* return value */
+enum {
+  FW_RET_SUCCESS = 0,
+  FW_RET_MESSAGE_TYPE_INVALID,
+  FW_RET_COMMAND_INVALID,
+  FW_RET_PAGE_DATA_OVERFLOW,
+  FW_RET_SECT_DATA_OVERFLOW,
+  FW_RET_AUTHENTICATION_FAIL,
+  FW_RET_FLASH_OPERATION_FAIL,
+  FW_RET_ADDRESS_OUT_OF_RANGE,
+  FW_RET_PARAMETER_INVALID
+};
+
+/* error value */
+enum {
+  FW_ERR_NOERROR = 0,
+  FW_ERR_FRAME_CHECKSUM_FAIL,
+  FW_ERR_FRAME_INVALID_LENGTH,
+  FW_ERR_FRAME_HIF_ERROR,
+  FW_ERR_MESSAGE_INVALID,
+  FW_ERR_COMMAND_INVALID,
+  FW_ERR_PAGE_DATA_OVERFLOW,
+  FW_ERR_SECT_DATA_OVERFLOW,
+  FW_ERR_AUTHENTICATION_FAIL,
+  FW_ERR_IMAGE_VERIFICATION_FAIL,
+  FW_ERR_FLASH_OPERATION_FAIL,
+  FW_ERR_ADDRESS_OUT_OF_RANGE,
+  FW_ERR_PARAMETER_INVALID,
+  FW_ERR_INTERRUPTED_BY_RESET
+};
 
 /***************************************
  * HAL Message
