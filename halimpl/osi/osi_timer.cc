@@ -13,7 +13,6 @@
  *   See the License for the specific language governing permissions and
  *   limitations under the License.
  *
- *
  */
 
 /************************************************************************
@@ -140,8 +139,9 @@ void OSI_timer_stop(tOSI_TIMER_HANDLER timer) {
       osi_info.timer_thread_flag &= ~OSI_TIMER_THREAD_FLAG_DETACH;
       osi_unlock();
       pthread_join(osi_info.timer_thread, NULL);
-    } else
+    } else {
       osi_unlock();
+    }
   }
 }
 
@@ -170,8 +170,8 @@ tOSI_TIMER_HANDLER OSI_timer_get_handler(char* name) {
   for (index = 0; index < OSI_MAX_TIMER; index++) {
     if ((char const*)osi_info.timer[index].name == NULL) continue;
 
-    if (strcmp((char const*)osi_info.timer[index].name, (char const*)name) ==
-        0) {
+    if (strcmp((char const*)osi_info.timer[index].name,
+        (char const*)name) == 0) {
       timer = &osi_info.timer[index];
       break;
     }
@@ -190,9 +190,10 @@ int32_t OSI_timer_get_current_time() {
   time(&rawtime);
   now = gmtime(&rawtime);
 
-  return (((now->tm_hour * 3600) + (now->tm_min * 60) + (now->tm_sec)) * 1000) +
-         (sec.tv_usec / 1000);
+  return (((now->tm_hour * 3600) + (now->tm_min * 60) + (now->tm_sec)) * 1000)
+          + (sec.tv_usec / 1000);
 }
+
 /************************************************************************
 ** Internal function
 *************************************************************************/
@@ -213,21 +214,23 @@ void OSI_timer_update(int32_t tick) {
 
       if (osi_info.timer[index].timeout <= 0) {
         /* START [16051100] - RTCC Patch */
-        if (((OSI_timer_get_current_time() - osi_info.timer[index].exact_time) >
-             osi_info.timer[index].init_timeout) ||
-            (OSI_timer_get_current_time() < osi_info.timer[index].exact_time))
+        if (((OSI_timer_get_current_time() - osi_info.timer[index].exact_time)
+            > osi_info.timer[index].init_timeout)
+            || (OSI_timer_get_current_time() < osi_info.timer[index].exact_time))
         /* END [16051100] - RTCC Patch */
         {
           osi_info.timer[index].state = OSI_STOP;
           osi_info.usingTimer--;
 
-          if (osi_info.timer[index].callback != NULL)
+          if (osi_info.timer[index].callback != NULL) {
             osi_info.timer[index].callback(
                 osi_info.timer[index].callback_param);
+          }
         } else {
           osi_info.timer[index].timeout =
-              osi_info.timer[index].init_timeout -
-              (OSI_timer_get_current_time() - osi_info.timer[index].exact_time);
+              osi_info.timer[index].init_timeout
+              - (OSI_timer_get_current_time()
+              - osi_info.timer[index].exact_time);
         }
       }
     }
