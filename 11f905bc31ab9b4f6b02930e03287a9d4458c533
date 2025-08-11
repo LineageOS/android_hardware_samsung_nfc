@@ -16,6 +16,23 @@
       "message": "leave votes on this and say what device it works on if already tested.",
       "revId": "11f905bc31ab9b4f6b02930e03287a9d4458c533",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "9c9a6dc1_a5614f1d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 33569
+      },
+      "writtenOn": "2025-08-11T08:04:11Z",
+      "side": 1,
+      "message": "Can you confirm that it works?",
+      "revId": "11f905bc31ab9b4f6b02930e03287a9d4458c533",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
