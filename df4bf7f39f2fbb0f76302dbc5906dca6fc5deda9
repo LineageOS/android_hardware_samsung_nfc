@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "4b23aa62_f52d15ee",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 4550
+      },
+      "writtenOn": "2025-08-13T18:08:15Z",
+      "side": 1,
+      "message": "This removed this change https://review.lineageos.org/c/LineageOS/android_hardware_samsung_nfc/+/433448",
+      "revId": "df4bf7f39f2fbb0f76302dbc5906dca6fc5deda9",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
