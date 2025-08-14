@@ -16,6 +16,24 @@
       "message": "This removed this change https://review.lineageos.org/c/LineageOS/android_hardware_samsung_nfc/+/433448",
       "revId": "df4bf7f39f2fbb0f76302dbc5906dca6fc5deda9",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "40c34d47_cd332280",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 34512
+      },
+      "writtenOn": "2025-08-14T20:42:33Z",
+      "side": 1,
+      "message": "done",
+      "parentUuid": "4b23aa62_f52d15ee",
+      "revId": "df4bf7f39f2fbb0f76302dbc5906dca6fc5deda9",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
