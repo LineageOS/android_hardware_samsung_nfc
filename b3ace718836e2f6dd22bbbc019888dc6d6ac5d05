@@ -16,6 +16,24 @@
       "message": "This looks strange, can\u0027t it be moved to the end?",
       "revId": "b3ace718836e2f6dd22bbbc019888dc6d6ac5d05",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "472ce8d1_9b198b92",
+        "filename": "1.2/Android.bp",
+        "patchSetId": 1
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 33569
+      },
+      "writtenOn": "2025-08-29T10:14:49Z",
+      "side": 1,
+      "message": "We can probably move it. I just didn\u0027t want to change dependency order.",
+      "parentUuid": "22554387_89f30451",
+      "revId": "b3ace718836e2f6dd22bbbc019888dc6d6ac5d05",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
