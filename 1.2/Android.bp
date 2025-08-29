@@ -20,8 +20,10 @@ cc_binary {
     ],
     cflags: [
     ],
-    shared_libs: [
-        "nfc_nci_samsung",
+    shared_libs: select(soong_config_variable("samsungNfcVars", "target_nfcnci_library"), {
+        any @ flag_val: [flag_val],
+        default: [nfc_nci_samsung],
+    }) + [
         "android.hardware.nfc@1.0",
         "android.hardware.nfc@1.1",
         "android.hardware.nfc@1.2",
