@@ -34,6 +34,24 @@
       "parentUuid": "22554387_89f30451",
       "revId": "b3ace718836e2f6dd22bbbc019888dc6d6ac5d05",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8518396f_a8f2dd64",
+        "filename": "1.2/Android.bp",
+        "patchSetId": 1
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 13648
+      },
+      "writtenOn": "2025-08-29T10:19:41Z",
+      "side": 1,
+      "message": "Looks better now.",
+      "parentUuid": "472ce8d1_9b198b92",
+      "revId": "b3ace718836e2f6dd22bbbc019888dc6d6ac5d05",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
