@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "22554387_89f30451",
+        "filename": "1.2/Android.bp",
+        "patchSetId": 1
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 13648
+      },
+      "writtenOn": "2025-08-29T10:10:43Z",
+      "side": 1,
+      "message": "This looks strange, can\u0027t it be moved to the end?",
+      "revId": "b3ace718836e2f6dd22bbbc019888dc6d6ac5d05",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
