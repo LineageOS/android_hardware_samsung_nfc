@@ -62,7 +62,6 @@
 #include <string>
 #include <vector>
 #include <config.h>
-#include "sparse_crc32.h"
 
 #if GENERIC_TARGET
 const char alternative_config_path[] = "/data/vendor/nfc/";
@@ -143,7 +142,6 @@ class CNfcConfig : public vector<const CNfcParam*> {
   void add(const CNfcParam* pParam);
   list<const CNfcParam*> m_list;
   bool mValidFile;
-  uint32_t config_crc32_;
   unsigned long state;
 
   inline bool Is(unsigned long f) { return (state & f) == f; }
@@ -270,7 +268,6 @@ bool CNfcConfig::readConfig(const char* name, bool bResetContent) {
   int bflag = 0;
   state = BEGIN_LINE;
 
-  config_crc32_ = sparse_crc32(0, (const void*)p_config, (int)config_size);
   mValidFile = true;
   if (size() > 0) {
     if (bResetContent)
@@ -422,7 +419,7 @@ bool CNfcConfig::readConfig(const char* name, bool bResetContent) {
 ** Returns:     none
 **
 ******************************************************************************/
-CNfcConfig::CNfcConfig() : mValidFile(true), config_crc32_(0), state(0) {}
+CNfcConfig::CNfcConfig() : mValidFile(true), state(0) {}
 
 /******************************************************************************
 **
