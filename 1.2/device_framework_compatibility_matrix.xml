@@ -1,0 +1,12 @@
+<compatibility-matrix version="1.0" type="framework">
+<!-- NFC -->
+<hal format="hidl" optional="true">
+    <name>android.hardware.nfc</name>
+    <transport>hwbinder</transport>
+    <version>1.2</version>
+    <interface>
+        <name>INfc</name>
+        <instance>default</instance>
+    </interface>
+</hal>
+</compatibility-matrix>

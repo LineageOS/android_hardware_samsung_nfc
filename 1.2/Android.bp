@@ -4,15 +4,15 @@ package {
     // all of the 'license_kinds' from "hardware_samsung_nfc_license"
     // to get the below license kinds:
     //   SPDX-license-identifier-Apache-2.0
-    default_applicable_licenses: ["hardware_samsung_nfc_license"],
+    default_applicable_licenses: ["hardware_sec_nfc_license"],
 }
 
 cc_binary {
-    name: "android.hardware.nfc@1.2-service.samsung",
+    name: "android.hardware.nfc@1.2-service.sec",
     defaults: ["hidl_defaults"],
     proprietary: true,
-    init_rc: ["android.hardware.nfc@1.2-service.samsung.rc"],
-    vintf_fragments: ["android.hardware.nfc@1.2-service.samsung.xml"],
+    init_rc: ["android.hardware.nfc@1.2-service.sec.rc"],
+    vintf_fragments: ["android.hardware.nfc@1.2-service.sec.xml"],
     relative_install_path: "hw",
     srcs: [
         "SecNfcService.cpp",
@@ -21,7 +21,7 @@ cc_binary {
     cflags: [
     ],
     shared_libs: [
-        "nfc_nci_samsung",
+        "nfc_nci_sec",
         "android.hardware.nfc@1.0",
         "android.hardware.nfc@1.1",
         "android.hardware.nfc@1.2",

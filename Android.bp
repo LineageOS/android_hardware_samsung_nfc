@@ -14,13 +14,13 @@
 // limitations under the License.
 
 package {
-    default_applicable_licenses: ["hardware_samsung_nfc_license"],
+    default_applicable_licenses: ["hardware_sec_nfc_license"],
 }
 
 // Added automatically by a large-scale-change
 // See: http://go/android-license-faq
 license {
-    name: "hardware_samsung_nfc_license",
+    name: "hardware_sec_nfc_license",
     visibility: [":__subpackages__"],
     license_kinds: [
         "SPDX-license-identifier-Apache-2.0",
@@ -31,7 +31,7 @@ license {
 }
 
 cc_library_shared {
-    name: "nfc_nci_samsung",
+    name: "nfc_nci_sec",
     defaults: ["hidl_defaults"],
     proprietary: true,
 
@@ -42,6 +42,9 @@ cc_library_shared {
         "-DNFC_RW_ONLY=TRUE",
         "-DNFC_SEC_NOT_OPEN_INCLUDED=TRUE",
         "-DINFC_1_1",
+
+
+        "-DFIXED_CONNECTIVITY_PIPE_WORKAROUND",
     ],
 
     srcs: [
@@ -60,9 +63,6 @@ cc_library_shared {
     ],
 
     shared_libs: [
-        "android.hardware.nfc@1.0",
-        "android.hardware.nfc@1.1",
-        "android.hardware.nfc@1.2",
         "libbase",
         "libcutils",
         "libhardware",
@@ -71,5 +71,13 @@ cc_library_shared {
         "liblog",
         "libutils",
         "libcrypto",
+
+        "android.hardware.nfc@1.0",
+        "android.hardware.nfc@1.1",
+        "android.hardware.nfc@1.2",
+
+        // Add for AIDL
+       // "android.hardware.nfc-V1-ndk",
+       // "libbinder_ndk",
     ],
 }

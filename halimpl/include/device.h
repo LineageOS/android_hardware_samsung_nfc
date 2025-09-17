@@ -29,3 +29,10 @@ int device_wakeup(void);
 int device_write(uint8_t* data, size_t len);
 int device_read(uint8_t* buffer, size_t len);
 void data_trace(const char* head, int len, uint8_t* p_data);
+#ifdef NFC_SEC_ESE_COLDRESET
+void device_ese_coldreset(void);
+void device_shutdown(void);
+#endif
+#ifdef MULTIPLE_CHIPS_SUPPORT
+void device_chip_detect();
+#endif

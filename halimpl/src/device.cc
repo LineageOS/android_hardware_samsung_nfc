@@ -13,7 +13,6 @@
  *   See the License for the specific language governing permissions and
  *   limitations under the License.
  *
- *
  */
 
 #include <errno.h>
@@ -27,7 +26,10 @@
 #include <sys/types.h>
 #include <termios.h>
 #include <unistd.h>
-
+#ifdef MULTIPLE_CHIPS_SUPPORT
+#include <cutils/properties.h>
+#include "product.h"
+#endif
 #include "device.h"
 #include "hal.h"
 #include "osi.h"
@@ -116,21 +118,31 @@ void device_close(void) {
   pthread_mutex_lock(&tr_lock);
   tr_driver = -1;
   pw_driver = -1;
-  pthread_mutex_unlock(&tr_lock);
 
   if (tr_closer != 0) write(tr_closer, "x", 1);
+  pthread_mutex_unlock(&tr_lock);
 
   OSI_task_stop(read_task);
 }
 
 int device_set_mode(eNFC_DEV_MODE mode) {
+  tNFC_HAL_FW_INFO* fw = &nfc_hal_info.fw_info;
+  tNFC_HAL_FW_BL_INFO* bl = &fw->bl_info;
   int ret;
 
   OSI_logt("device mode chage: %d -> %d", dev_state, mode);
   ret = ioctl(pw_driver, SEC_NFC_SET_MODE, (int)mode);
   if (!ret) {
-    if (mode == NFC_DEV_MODE_ON) isSleep = true;
+    if (mode == NFC_DEV_MODE_BOOTLOADER && mode != dev_state)
+      nfc_hal_info.fw_info.seq_no = 0;
+    else if (mode == NFC_DEV_MODE_ON)
+      isSleep = true;
     dev_state = mode;
+  }
+
+  if (bl->product >= SNFC_SEN6) {
+    OSI_logd("Wait 100ms for firmware boot for SEN6");
+    usleep(100 * 1000);
   }
 
   return ret;
@@ -213,6 +225,15 @@ int device_read(uint8_t* buffer, size_t len) {
   int ret = 0;
   int total = 0;
   int retry = 1;
+
+  // [I2c] Handles exceptions when consecutive IRQ occurred
+  if (len == 0) {
+    ret = read(tr_driver, buffer + total, len);
+    if(ret == 0) {
+      OSI_logt("payload is 0");
+      return total;
+    }
+  }
 
   while (len != 0) {
     ret = read(tr_driver, buffer + total, len);
@@ -311,7 +332,6 @@ void read_thread(void) {
     }
 
     /* payload will read upper layer */
-
     msg->event = HAL_EVT_READ;
     memcpy((void*)msg->param, (void*)header, NCI_HDR_SIZE);
 
@@ -319,9 +339,11 @@ void read_thread(void) {
     OSI_logd("Sent message to HAL message task, remind que: %d", ret);
   }
 
+  pthread_mutex_lock(&tr_lock);
   close(close_pipe[0]);
   close(close_pipe[1]);
   tr_closer = 0;
+  pthread_mutex_unlock(&tr_lock);
 
   osi_unlock();  // TODO: why?
 
@@ -344,3 +366,103 @@ void data_trace(const char* head, int len, uint8_t* p_data) {
 
   if (log_ptr) OSI_logd(" %s(%3d) %s", head, i, trace_buffer);
 }
+
+#ifdef NFC_SEC_ESE_COLDRESET
+void device_ese_coldreset(void) {
+  OSI_logt("enter");
+  int ret = 0;
+  ret = ioctl(pw_driver, SEC_NFC_COLD_RESET, 0);
+  if (ret < 0) {
+    OSI_loge("ese cold reset error = %d", ret);
+  }
+  OSI_logt("exit");
+}
+
+void device_shutdown(void) {
+  OSI_logt("enter");
+  int ret = 0;
+  ret = ioctl(pw_driver, SEC_NFC_SHUTDOWN, 0);
+  if (ret < 0) {
+      OSI_loge("set shutdown error = %d", ret);
+  }
+  OSI_logt("exit");
+}
+#endif
+#ifdef MULTIPLE_CHIPS_SUPPORT
+#ifndef FW_HDR_SIZE
+#define FW_HDR_SIZE 4
+#endif
+#define CHIP_DETECT_DRIVER_NAME "/dev/sec-nfc"
+
+void device_chip_detect()
+{
+    int ret;
+    uint8_t get_boot_info_cmd[11]={0x00,0x01,0x07,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+    uint8_t rx_buff[23]={0};
+    const char *product_name;
+    int len;
+    int hdriver = 0;
+    uint8_t product, *version;
+    uint16_t base_address = 0x2000;
+    char vendor_chip_name[PROPERTY_VALUE_MAX]={0};
+
+    do{
+        hdriver = open(CHIP_DETECT_DRIVER_NAME, O_RDWR | O_NOCTTY);
+        if (hdriver <= 0){
+            ALOGE("%s Failed to open device, %s, error: %d\n", __func__, CHIP_DETECT_DRIVER_NAME, errno);
+            break;
+        }
+        ret = ioctl(hdriver, SEC_NFC_SET_MODE, NFC_DEV_MODE_BOOTLOADER);
+        if (ret) {
+            ALOGE("%s Failed to set device to bootloader mode, ret=%d, error: %d\n", __func__, ret,errno);
+            break;
+        }
+        ret = write(hdriver, get_boot_info_cmd , sizeof(get_boot_info_cmd) );
+        if (ret != sizeof(get_boot_info_cmd)){
+            ALOGE("%s failed to send get bootloader command. ret=%d, error: %d\n", __func__, ret,errno);
+            break;
+        }
+
+        OSI_delay(10);
+
+        ret = read(hdriver, rx_buff, FW_HDR_SIZE);
+        if (ret != FW_HDR_SIZE){
+            ALOGE("%s Read bootloader info error ret = %d, errno = %d\n", __func__, ret, errno);
+           break;
+        }
+
+        len = (rx_buff[3] << 8) + rx_buff[2];
+        if(len > (sizeof(rx_buff) - FW_HDR_SIZE)){
+            ALOGE("%s Read bootloader len error len = %d\n", __func__, len);
+            break;
+        }
+        ret = read(hdriver, rx_buff+FW_HDR_SIZE, len);
+        if (ret != len){
+            ALOGE("%s Read bootloader info2 error ret = %d, errno = %d\n", __func__, ret, errno);
+            break;
+        }
+
+        version = rx_buff+FW_HDR_SIZE;
+
+        if (version[0] >= SNFC_N74) {
+           FROM_LITTLE_ARRY(base_address, rx_buff + FW_HDR_SIZE + 12, 2);
+        }
+        ALOGD("%s base address:0x%04x\n", __func__, base_address);
+        ALOGD("%s version: %02x %02x %02x %02x\n", __func__, version[0],version[1],version[2],version[3]);
+        product = product_map(version, &base_address);
+        product_name = get_product_name(product);
+        ALOGD("%s Detected product:%s\n", __func__, product_name);
+
+        property_get("persist.nfc.chip.product.name", vendor_chip_name, "");
+        if(strlen(vendor_chip_name) == 0 || strcmp(vendor_chip_name, product_name) != 0){
+            ALOGD("%s product type first detected, reset config...",__func__);
+            property_set("persist.nfc.chip.product.name", product_name);
+            /*resetConfig();*/
+        }
+    }while(0);
+
+    if(hdriver > 0){
+        close(hdriver);
+    }
+}
+#endif
