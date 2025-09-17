@@ -13,7 +13,6 @@
  *   See the License for the specific language governing permissions and
  *   limitations under the License.
  *
- *
  */
 
 #include <ctype.h>
@@ -21,13 +20,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#ifdef MULTIPLE_CHIPS_SUPPORT
+#include "device.h"
+#include <cutils/properties.h>
+#endif
 #include "util.h"
 
-/* START [H17080801] HAL config file path */
 #define CFG_FILE_1 "/vendor/etc/libnfc-sec-vendor.conf"
 #define CFG_FILE_2 "/etc/libnfc-sec-vendor.conf"
-/* END [H17080801] HAL config file path */
+#ifdef MULTIPLE_CHIPS_SUPPORT
+const char *g_fw_bin_dirs[]={
+    "/vendor/etc/nfc",
+    "/vendor/etc",
+    "/etc/nfc",
+    "/etc",
+};
+#define CFG_FILE_NAME "libnfc-sec-vendor"
+#define CFG_FILE_NAME_EXT ".conf"
+#endif
 
 #define isToken(x) (x == ':' || x == '=' || x == ' ' || x == '\t')
 #define skipToken(x) \
@@ -50,9 +60,7 @@ bool willBeContinuous(char* buffer, size_t maxlen) {
 }
 
 bool find_by_name_from_current(FILE* file, const char* field) {
-  char *p, buffer[256] = {
-               '\0',
-           };
+  char *p, buffer[256] = {'\0',};
   size_t len;
   int fp;
   bool skip = false;
@@ -85,6 +93,66 @@ bool find_by_name(FILE* file, const char* field) {
   return find_by_name_from_current(file, field);
 }
 
+#ifdef MULTIPLE_CHIPS_SUPPORT
+char *get_bin_full_path(char *bin_name)
+{
+    int i;
+    FILE *file = NULL;
+    bool found = false;
+    static char full_path[128];
+    for(i = 0; i < sizeof(g_fw_bin_dirs)/sizeof(const char *); i++){
+        sprintf(full_path,"%s/%s",g_fw_bin_dirs[i], bin_name);
+        if ((file = fopen(full_path, "rb")) != NULL){
+            fclose(file);
+            found = true;
+            break;
+        }
+    }
+    if(found == false){
+        OSI_loge("%s was not found!\n",bin_name);
+        return NULL;
+    }
+    //OSI_logd("found: %s !\n",full_path);
+    return full_path;
+}
+
+char *get_vendor_conf_path()
+{
+    char vendor_chip_name[PROPERTY_VALUE_MAX];
+    char conf_name[64];
+    char *conf_path = NULL;
+
+    property_get("persist.nfc.chip.product.name", vendor_chip_name, "");
+    if(strlen(vendor_chip_name) == 0){
+        device_chip_detect();
+    }
+
+    if(strlen(vendor_chip_name) > 0 ){
+        sprintf(conf_name, "%s_%s%s",CFG_FILE_NAME, vendor_chip_name, CFG_FILE_NAME_EXT);
+        conf_path = get_bin_full_path(conf_name);
+    }
+
+    if(conf_path == NULL){
+         sprintf(conf_name, "%s%s",CFG_FILE_NAME, CFG_FILE_NAME_EXT);
+         conf_path = get_bin_full_path(conf_name);
+    }
+    return conf_path;
+}
+
+FILE *open_config_file()
+{
+    FILE *file = NULL;
+
+    char *conf_path = get_vendor_conf_path();
+    if(conf_path != NULL){
+        file = fopen(conf_path, "rb");
+    }
+
+    return file;
+
+}
+#endif
+
 bool __get_config_int(__attribute__((unused)) char* file_path,
                       const char* field, int* data, int option) {
   FILE* file;
@@ -93,8 +161,11 @@ bool __get_config_int(__attribute__((unused)) char* file_path,
   long int val;
 
   if (!field || !data) return false;
-
-  /* START [H17080801] HAL config file path */
+#ifdef MULTIPLE_CHIPS_SUPPORT
+  if ((file = open_config_file()) == NULL) {
+      return 0;
+  }
+#else
   if ((file = fopen(CFG_FILE_1, "rb")) == NULL) {
     OSI_loge("Cannot open config file %s", CFG_FILE_1);
     if ((file = fopen(CFG_FILE_2, "rb")) == NULL) {
@@ -102,7 +173,7 @@ bool __get_config_int(__attribute__((unused)) char* file_path,
       return 0;
     }
   }
-  /* END [H17080801] HAL config file path */
+#endif
 
   if (!find_by_name(file, field)) {
     OSI_loge("Cannot find the field name [%s]", field);
@@ -152,9 +223,91 @@ fail:
 }
 
 bool get_config_int(const char* field, int* data) {
-  /* START [17080801] HAL config file path */
   return __get_config_int((char*)CFG_FILE_1, field, data, 0);
-  /* END [17080801] HAL config file path */
+}
+
+int get_config_byteArry(const char* field, uint8_t* byteArry,
+                        size_t arrySize) {
+  FILE* file;
+  char data[256], *endp, *p;
+  char prtb[256 * 5 + 1];  // print buffer "0x02X "
+  uint8_t* buffer;
+  bool readmore = true;
+  size_t i, count = 0;
+  long int val;
+
+  if (!field || !byteArry || arrySize < 1) return 0;
+#ifdef MULTIPLE_CHIPS_SUPPORT
+  if ((file = open_config_file()) == NULL) {
+      return 0;
+  }
+#else
+  if ((file = fopen(CFG_FILE_1, "rb")) == NULL) {
+    OSI_loge("Cannot open config file %s", CFG_FILE_1);
+    if ((file = fopen(CFG_FILE_2, "rb")) == NULL) {
+      OSI_loge("Cannot open config file %s", CFG_FILE_2);
+      return 0;
+    }
+  }
+#endif
+  if (!find_by_name(file, field)) {
+    OSI_logd("Cannot find the field name [%s]", field);
+    goto fail;
+  }
+
+  if ((buffer = (uint8_t *)malloc(arrySize)) == NULL) {
+    OSI_logd("Cannot allocate temporary buffer for [%s]", field);
+    goto fail;
+  }
+
+  while (count < arrySize && readmore) {
+    if (!fgets(data, sizeof(data) - 1, file)) {
+      OSI_loge("Read failed");
+      goto fail_free;
+    }
+
+    readmore = willBeContinuous(data, sizeof(data));
+    p = data;
+    skipToken(p);
+
+    while (*p != '\0' && *p != '\n' && *p != '\\') {
+      if (*p == '0' && *(p + 1) == 'x')
+        val = strtol(p, &endp, 16);
+      else
+        val = strtol(p, &endp, 10);
+
+      if (p == endp) {
+        OSI_loge("Read failed [%s]", data);
+        goto fail_free;
+      }
+
+      if (val < 0 || val > 0xFF) {
+        OSI_loge("Unable range %s: [%02lX(%ld)] (%02X ~ %02X)", field, val,
+                 val, 0, 0xFF);
+        goto fail_free;
+      }
+
+      buffer[count++] = (uint8_t)val;
+      p = endp;
+      skipToken(p);
+    }
+  }
+
+  for (i = 0; i < count; i++) sprintf((prtb + (i * 5)), "0x%02X ", buffer[i]);
+  OSI_logd("Get config %s: %s", field, prtb);
+  if (count == arrySize) OSI_loge("Overflower!, remained data is [%s]", endp);
+
+  memcpy(byteArry, buffer, count);
+  free(buffer);
+
+  fclose(file);
+  return count;
+
+fail_free:
+  free(buffer);
+fail:
+  fclose(file);
+  return 0;
 }
 
 int get_config_string(const char* field, char* strBuffer, size_t bufferSize) {
@@ -165,7 +318,11 @@ int get_config_string(const char* field, char* strBuffer, size_t bufferSize) {
 
   if (!field || !strBuffer || bufferSize < 1) return 0;
 
-  /* START [H17080801] HAL config file path */
+#ifdef MULTIPLE_CHIPS_SUPPORT
+  if ((file = open_config_file()) == NULL) {
+      return 0;
+  }
+#else
   if ((file = fopen(CFG_FILE_1, "rb")) == NULL) {
     OSI_loge("Cannot open config file %s", CFG_FILE_1);
     if ((file = fopen(CFG_FILE_2, "rb")) == NULL) {
@@ -173,7 +330,7 @@ int get_config_string(const char* field, char* strBuffer, size_t bufferSize) {
       return 0;
     }
   }
-  /* END [H17080801] HAL config file path */
+#endif
 
   if (!find_by_name(file, field)) {
     OSI_logd("Cannot find the field name [%s]", field);
@@ -193,10 +350,8 @@ int get_config_string(const char* field, char* strBuffer, size_t bufferSize) {
 
     readmore = willBeContinuous(data, sizeof(data));
     p = data;
-    while ((p = strchr(p, '"')) != NULL)  // start string
-    {
-      for (p++; *p != '"'; p++)  // end string
-      {
+    while ((p = strchr(p, '"')) != NULL) { // start string
+      for (p++; *p != '"'; p++) { // end string
         if (*p == '\n' || *p == '\0' || *p == '\\') {
           OSI_loge("Cannot find ending point of string");
           goto fail_free;
@@ -236,7 +391,11 @@ int get_config_count(const char* field) {
   FILE* file;
   int count = 0;
 
-  /* START [H17080801] HAL config file path */
+#ifdef MULTIPLE_CHIPS_SUPPORT
+  if ((file = open_config_file()) == NULL) {
+      return 0;
+  }
+#else
   if ((file = fopen(CFG_FILE_1, "rb")) == NULL) {
     OSI_loge("Cannot open config file %s", CFG_FILE_1);
     if ((file = fopen(CFG_FILE_2, "rb")) == NULL) {
@@ -244,12 +403,67 @@ int get_config_count(const char* field) {
       return 0;
     }
   }
-  /* END [H17080801] HAL config file path */
+#endif
 
   while (find_by_name_from_current(file, field)) count++;
 
   fclose(file);
   return count;
+}
+
+uint8_t get_config_propnci_get_oid(int n) {
+  FILE* file;
+  uint8_t buffer[6], *endp;
+  int count = n;
+  long int val;
+
+#ifdef MULTIPLE_CHIPS_SUPPORT
+  if ((file = open_config_file()) == NULL) {
+      return 0;
+  }
+#else
+  if ((file = fopen(CFG_FILE_1, "rb")) == NULL) {
+    OSI_loge("Cannot open config file %s", CFG_FILE_1);
+    if ((file = fopen(CFG_FILE_2, "rb")) == NULL) {
+      OSI_loge("Cannot open config file %s", CFG_FILE_2);
+      return 0;
+    }
+  }
+#endif
+
+  while (count--) {
+    if (!find_by_name_from_current(file, "NCI_PROP")) {
+      OSI_loge("Not found %d prop configure", n);
+      goto fail;
+    }
+  }
+
+  if (!fgets((char *)buffer, sizeof(buffer) - 1, file)) {
+    OSI_loge("Read failed");
+    goto fail;
+  }
+
+  if ((buffer[0] == '0') && (buffer[1] == 'x'))
+    val = strtol((char *)buffer, (char **)&endp, 0x10);
+  else
+    val = strtol((char *)buffer, (char **)&endp, 10);
+
+  if (buffer == endp) {
+    OSI_loge("Read failed [%s]", buffer);
+    goto fail;
+  }
+
+  if (val < 0 || val > 0xFF) {
+    OSI_loge("Unable to use prop OID 0x%02lx", val);
+    goto fail;
+  }
+
+  fclose(file);
+  return (uint8_t)val;
+
+fail:
+  fclose(file);
+  return 0;
 }
 
 int get_hw_rev() {

@@ -42,6 +42,7 @@ cc_library_shared {
         "-DNFC_RW_ONLY=TRUE",
         "-DNFC_SEC_NOT_OPEN_INCLUDED=TRUE",
         "-DINFC_1_1",
+        "-DFIXED_CONNECTIVITY_PIPE_WORKAROUND",
     ],
 
     srcs: [

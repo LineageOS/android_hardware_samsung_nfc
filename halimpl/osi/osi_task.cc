@@ -13,7 +13,6 @@
  *   See the License for the specific language governing permissions and
  *   limitations under the License.
  *
- *
  */
 
 /************************************************************************
@@ -78,6 +77,7 @@ tOSI_TASK_HANDLER OSI_task_allocate(const char* task_name,
   osi_unlock();
   return free_task;
 }
+
 OSI_STATE OSI_task_run(tOSI_TASK_HANDLER task_handler) {
   pthread_attr_t attr;
   int ret = OSI_FAIL;
@@ -174,8 +174,8 @@ tOSI_TASK_HANDLER OSI_task_get_handler(char* name) {
   for (index = 0; index < OSI_MAX_TASK; index++) {
     if ((char const*)osi_info.task[index].name == NULL) continue;
 
-    if (strcmp((char const*)osi_info.task[index].name, (char const*)name) ==
-        0) {
+    if (strcmp((char const*)osi_info.task[index].name,
+               (char const*)name) == 0) {
       task = &osi_info.task[index];
       break;
     }

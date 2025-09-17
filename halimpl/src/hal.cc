@@ -29,9 +29,120 @@ using namespace android::hardware::nfc::V1_1;
 using android::hardware::nfc::V1_1::NfcEvent;
 tNFC_HAL_CB nfc_hal_info;
 
-/* START - VTS Replay */
 bool sending_nci_packet = false;
-/* END - VTS Replay */
+static bool aidl_hal_enabled = false;
+
+#ifdef FIXED_CONNECTIVITY_PIPE_WORKAROUND
+
+extern int nfc_hal_nci_version;
+
+#define HCI_HOST_TERMINAL 0x01
+#define HCI_HOST_UICC 0x02
+#define HCI_HOST_ESE 0x03
+#define HCI_HOST_UICC2 0x04
+
+static uint8_t g_nfcc_uicc_connectivity_pipe_id = 0x00;
+static uint8_t g_nfcc_ese_connectivity_pipe_id = 0x00;
+static uint8_t g_stack_uicc_connectivity_pipe_id = 0x00;
+static uint8_t g_stack_ese_connectivity_pipe_id = 0x00;
+
+void load_persist_connectivity_pipe_ids()
+{
+    char pipe_id_str[PROPERTY_VALUE_MAX]={0};
+    unsigned int pipe_id;
+    unsigned long num = 0;
+
+    if (GetNumValue(NAME_OFF_HOST_ESE_PIPE_ID, &num, sizeof(num))) {
+        g_stack_ese_connectivity_pipe_id = num;
+    }
+    if (GetNumValue(NAME_OFF_HOST_SIM_PIPE_ID, &num, sizeof(num))) {
+        g_stack_uicc_connectivity_pipe_id = num;
+    }
+    ALOGD("stack uicc connectivity pipe id: 0x%02x",g_stack_uicc_connectivity_pipe_id);
+    ALOGD("stack ese connectivity pipe id: 0x%02x",g_stack_ese_connectivity_pipe_id);
+
+    property_get("persist.nfc.nfcc.uicc.transaction.pipe.id", pipe_id_str, "");
+    if(strlen(pipe_id_str) >0 ){
+        sscanf(pipe_id_str,"%02x", &pipe_id);
+        g_nfcc_uicc_connectivity_pipe_id = (uint8_t)pipe_id;
+        ALOGD("persist.nfc.nfcc.uicc.transaction.pipe.id: %s:0x%02x",pipe_id_str,g_nfcc_uicc_connectivity_pipe_id);
+    }
+    property_get("persist.nfc.nfcc.ese.transaction.pipe.id", pipe_id_str, "");
+    if(strlen(pipe_id_str) >0 ){
+        sscanf(pipe_id_str,"%02x", &pipe_id);
+        g_nfcc_ese_connectivity_pipe_id = (uint8_t)pipe_id;
+        ALOGD("persist.nfc.nfcc.ese.transaction.pipe.id: %s:0x%02x",pipe_id_str,g_nfcc_ese_connectivity_pipe_id);
+    }
+}
+
+void update_connectivity_pipe_id(uint8_t dir, tNFC_NCI_PKT* pkt)
+{
+    //make sure packet is data for hci static connection on nci 2.0 or above
+    if(nfc_hal_nci_version < NCI_VER_2_0 ||
+        NCI_MT(pkt) != NCI_MT_DATA ||
+        NCI_GID(pkt) != 0x01)
+    {
+        return;
+    }
+    uint8_t pipe_id;
+    uint8_t new_pipe_id = 0x00;
+
+    if(dir == 1 && //recv from nfcc
+            NCI_PBF(pkt) == 0 && //last fragment
+            NCI_LEN(pkt) == 7 && //len is for 7 for ADM_NOTIFY_PIPE_CREATED
+            NCI_PAYLOAD(pkt)[0] == 0x81 && //HCP header, last fragment,static pipe for administion gate
+            NCI_PAYLOAD(pkt)[1] == 0x12 && //HCP message header, instruction type command, instruction ADM_NOTIFY_PIPE_CREATED
+            NCI_PAYLOAD(pkt)[4] == HCI_HOST_TERMINAL && //Destination Host ID
+            NCI_PAYLOAD(pkt)[5] == 0x41) //Destination Gate ID: Connectivity gate (0x41)
+    {
+        uint8_t source_host = NCI_PAYLOAD(pkt)[2];
+        char pipe_id_str[16];
+        pipe_id = NCI_PAYLOAD(pkt)[6] & 0x7F;
+
+        sprintf(pipe_id_str, "%02x",pipe_id);
+        if(source_host == HCI_HOST_UICC){
+            g_nfcc_uicc_connectivity_pipe_id = pipe_id;
+            property_set("persist.nfc.nfcc.uicc.transaction.pipe.id", pipe_id_str);
+            OSI_logt("save connectivity pipe id 0x%02x for uicc", pipe_id);
+            new_pipe_id = g_stack_uicc_connectivity_pipe_id;
+        }
+        else if(source_host == HCI_HOST_ESE){
+            g_nfcc_ese_connectivity_pipe_id = pipe_id;
+            property_set("persist.nfc.nfcc.ese.transaction.pipe.id", pipe_id_str);
+            OSI_logt("save connectivity pipe id 0x%02x for ese", pipe_id);
+            new_pipe_id = g_stack_ese_connectivity_pipe_id;
+        }
+        if(new_pipe_id != 0x00){
+            NCI_PAYLOAD(pkt)[6] = (NCI_PAYLOAD(pkt)[6] & 0x80) | (new_pipe_id & 0x7F);
+            OSI_logt("update connectivity pipe id from:0x%02x to:0x%02x", pipe_id, (NCI_PAYLOAD(pkt)[6] & 0x7F));
+        }
+        return;
+    }
+
+    pipe_id = (NCI_PAYLOAD(pkt)[0] & 0x7F);
+    if(dir == 0){ //send to nfcc
+        if(pipe_id == g_stack_uicc_connectivity_pipe_id){
+            new_pipe_id = g_nfcc_uicc_connectivity_pipe_id & 0x7F;
+        }
+        else if(pipe_id == g_stack_ese_connectivity_pipe_id){
+            new_pipe_id = g_nfcc_ese_connectivity_pipe_id & 0x7F;
+        }
+    }
+    else{ //recv from nfcc
+        if(pipe_id == g_nfcc_uicc_connectivity_pipe_id){
+            new_pipe_id = g_stack_uicc_connectivity_pipe_id & 0x7F;
+        }
+        else if(pipe_id == g_nfcc_ese_connectivity_pipe_id){
+            new_pipe_id = g_stack_ese_connectivity_pipe_id & 0x7F;
+        }
+    }
+    if(new_pipe_id != 0x00){
+         NCI_PAYLOAD(pkt)[0] = (NCI_PAYLOAD(pkt)[0] & 0x80) | (new_pipe_id & 0x7F);
+         OSI_logt("dir: %s, update connectivity pipe id from:0x%02x to:0x%02x", (dir == 0? "send":"recv"), pipe_id, (NCI_PAYLOAD(pkt)[0] & 0x7F));
+    }
+
+}
+#endif
 
 /*************************************
  * Generic device handling.
@@ -51,12 +162,14 @@ bool nfc_data_callback(tNFC_NCI_PKT* pkt) {
   OSI_logt("!");
   if (!nfc_hal_info.data_cback) return false;
 
-  /* START - VTS Replay */
   if (((data[0] >> 4) == 4) && (sending_nci_packet == true)) {
     OSI_logt("clear sendig_nci_packet");
     sending_nci_packet = false;
   }
-  /* END - VTS Replay */
+
+#ifdef FIXED_CONNECTIVITY_PIPE_WORKAROUND
+  update_connectivity_pipe_id(1, pkt);
+#endif
 
   nfc_hal_info.data_cback(len, data);
   return true;
@@ -73,9 +186,7 @@ int nfc_hal_init(void) {
 
   OSI_logt("enter; ========================================");
 
-  /* START - VTS Replay */
   sending_nci_packet = false;
-  /* END - VTS Replay */
 
   /* don't print log at user binary */
   ret = property_get("ro.build.type", valueStr, "");
@@ -111,7 +222,8 @@ int nfc_hal_init(void) {
   setSleepTimeout(SET_SLEEP_TIME_CFG, 5000);
 
   if (!nfc_hal_info.msg_task || !nfc_hal_info.nci_timer ||
-      !nfc_hal_info.sleep_timer || !nfc_hal_info.msg_q || !nfc_hal_info.nci_q) {
+      !nfc_hal_info.sleep_timer || !nfc_hal_info.msg_q ||
+      !nfc_hal_info.nci_q) {
     nfc_hal_deinit();
     return -EPERM;
   }
@@ -153,15 +265,23 @@ int nfc_hal_open(nfc_stack_callback_t* p_cback,
 
   OSI_logt("enter;");
 
-  /* START - VTS */
   if (nfc_hal_info.state == HAL_STATE_POSTINIT) {
     OSI_logt("SAMSUNG Hal already open");
+    msg = (tNFC_HAL_MSG*)OSI_mem_get(HAL_EVT_SIZE);
+    if (msg != NULL) {
+      nfc_hal_info.stack_cback = p_cback;
+      nfc_hal_info.data_cback = p_data_cback;
+      nfc_hal_info.state = HAL_STATE_OPEN;
+      msg->event = HAL_EVT_OPEN;
+      OSI_queue_put(nfc_hal_info.msg_q, (void*)msg);
+    }
     return 0;
   }
-  /* END - VTS */
 
-  /* Initialize HAL */
   nfc_hal_init();
+#ifdef FIXED_CONNECTIVITY_PIPE_WORKAROUND
+  load_persist_connectivity_pipe_ids();
+#endif
 
   if (device_open()) return -EPERM;
 
@@ -188,12 +308,10 @@ int nfc_hal_close() {
 
   OSI_logt("enter;");
 
-  /* START - VTS */
   if (nfc_hal_info.state == HAL_STATE_CLOSE) {
     OSI_logt("SAMSUNG HAL already closed");
-    return 1;  // FAILED
+    return 1;
   }
-  /* END - VTS */
 
   msg = (tNFC_HAL_MSG*)OSI_mem_get(HAL_EVT_SIZE);
   if (msg != NULL) {
@@ -205,13 +323,12 @@ int nfc_hal_close() {
   device_sleep();
   device_close();
 
-  nfc_hal_info.state = HAL_STATE_CLOSE; /* VTS */
+  nfc_hal_info.state = HAL_STATE_CLOSE;
 
+  OSI_logd("nfc_hal_close : Send HAL_NFC_CLOSE_CPLT_EVT(ok)");
   nfc_stack_cback(HAL_NFC_CLOSE_CPLT_EVT, HAL_NFC_STATUS_OK);
 
-  /* START - For higher than Android-8.0 */
   OSI_deinit();
-  /* END - For higher than Android-8.0 */
 
   OSI_logt("exit;");
   return 0;
@@ -222,36 +339,37 @@ int nfc_hal_write(uint16_t data_len, const uint8_t* p_data) {
   size_t size = (size_t)data_len;
 
   OSI_logt("enter;");
-  /* START - VTS Replay */
-  if ((sending_nci_packet == true) && ((p_data[0] >> 4) == 2)) {
+  if ((sending_nci_packet == true) && ((p_data[0] >> 4) == 2)
+      && !(nfc_hal_info.flag & HAL_FLAG_ALREADY_INIT)) {
     OSI_logt("Don't send NCI");
     return size;
   }
-  /* END - VTS Replay */
 
   msg = (tNFC_HAL_MSG*)OSI_mem_get(size + HAL_EVT_SIZE);
   if (msg != NULL) {
     msg->event = HAL_EVT_WRITE;
     memcpy((uint8_t*)&msg->nci_packet, p_data, size);
 
-    /* START - VTS Replay */
     if ((sending_nci_packet == false) && ((p_data[0] >> 4) == 2))
       sending_nci_packet = true;
-    /* END - VTS Replay */
   }
+#ifdef FIXED_CONNECTIVITY_PIPE_WORKAROUND
+  update_connectivity_pipe_id(0, &msg->nci_packet);
+#endif
   // changed OIS_queue_put() sequence to meet VTS Replay
   if (OSI_queue_put(nfc_hal_info.msg_q, (void*)msg) == -1)
     sending_nci_packet = false;
 
   OSI_logt("exit;");
-  return size; /* VTS */
+  return size;
 }
 
 int nfc_hal_core_initialized(uint8_t* p_core_init_rsp_params) {
   tNFC_HAL_MSG* msg;
-  size_t size = (size_t)p_core_init_rsp_params[2] + 3;
-
   OSI_logt("enter;");
+
+  if(p_core_init_rsp_params != nullptr) {
+  size_t size = (size_t)p_core_init_rsp_params[2] + 3;
 
   msg = (tNFC_HAL_MSG*)OSI_mem_get(size + HAL_EVT_SIZE);
   if (msg != NULL) {
@@ -260,13 +378,18 @@ int nfc_hal_core_initialized(uint8_t* p_core_init_rsp_params) {
 
     OSI_queue_put(nfc_hal_info.msg_q, (void*)msg);
   }
+  }
+  else {
+    OSI_logt("p_core_init_rsp_params is null;");
+  }
+
   OSI_logt("exit;");
+
   return 0;
 }
 
 int nfc_hal_pre_discover() {
   OSI_logt("enter;");
-  /* START - VTS Replay */
   /*
   tNFC_HAL_MSG *msg;
   msg = (tNFC_HAL_MSG *)OSI_mem_get(HAL_EVT_SIZE);
@@ -275,8 +398,14 @@ int nfc_hal_pre_discover() {
     OSI_queue_put(nfc_hal_info.msg_q, (void *)msg);
   }
   */
-  /* END - VTS Replay */
+  OSI_logd("%s:aidl_hal_enabled=%d",__func__, aidl_hal_enabled);
   OSI_logt("exit;");
+  if(aidl_hal_enabled){
+    /*Tell AIDL HAL not to wait for HAL_NFC_PRE_DISCOVER_CPLT_EVT*/
+    return NFC_STATUS_FAILED;
+  }
+
+  /*return success is required for HIDL HAL VTS */
   return 0;
 }
 
@@ -297,7 +426,6 @@ int nfc_hal_control_granted() {
 int nfc_hal_power_cycle() {
   OSI_logt("enter;");
 
-  /* START - VTS */
   tNFC_HAL_MSG* msg;
   if (nfc_hal_info.state == HAL_STATE_CLOSE) {
     OSI_logt("SAMSUNG Hal already closed, ignoring power cycle");
@@ -309,7 +437,6 @@ int nfc_hal_power_cycle() {
     msg->event = HAL_EVT_POWER_CYCLE;
     OSI_queue_put(nfc_hal_info.msg_q, (void*)msg);
   }
-  /* END - VTS */
 
   OSI_logt("exit;");
   return 0;
@@ -347,7 +474,10 @@ int nfc_hal_factory_reset(void) {
 
 int nfc_hal_closeForPowerOffCase(void) {
   OSI_logt("enter;");
-  // TO DO impl
+#ifdef NFC_SEC_ESE_COLDRESET
+  device_shutdown();
+#endif
+  //TO DO impl
   nfc_hal_close();
   OSI_logt("exit;");
 
@@ -447,6 +577,46 @@ void nfc_hal_getVendorConfig_1_2(
   }
 
   OSI_logt("exit;");
+}
+
+// AIDL INfc
+// for setEnableVerboseLogging(in boolean enable)
+void nfc_hal_setLogging(bool enable) {
+  if(!enable)
+    OSI_set_debug_level(0);
+  else
+    OSI_set_debug_level(2);
+}
+
+// for isVerboseLoggingEnabled
+bool nfc_hal_isLoggingEnabled() {
+  if(osi_debug_level == 0x00)
+    return false;
+
+  return true;
+}
+
+int nfc_hal_core_initialized_for_aidl() {
+  OSI_logt("enter;");
+  tNFC_HAL_MSG *msg;
+  msg = (tNFC_HAL_MSG *)OSI_mem_get(HAL_EVT_SIZE);
+  if (msg != NULL) {
+    OSI_logt("send  HAL_EVT_CORE_INIT");
+    msg->event = HAL_EVT_CORE_INIT;
+    OSI_queue_put(nfc_hal_info.msg_q, (void *)msg);
+    return 0;
+  }
+  else
+    OSI_logt("nfc_hal_core_initialized_for_aidl : msg is null;");
+
+  OSI_logt("exit;");
+
+  return 0;
+}
+
+void nfc_hal_enableAidl(bool enable){
+  OSI_logt("%s:enable=%d",__func__, enable);
+  aidl_hal_enabled = enable;
 }
 
 #endif
