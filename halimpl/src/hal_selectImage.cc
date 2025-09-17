@@ -293,11 +293,40 @@ static char* get_image_file(tIMAGE* image, char* from) {
   if (from != NULL) {
     file_name = get_image_file_name(image);
 
+    if(image->type == IMAGE_TYPE_FW){
+        char *ext_pos = strrchr(file_name,'.');
+        if(ext_pos){
+            char key_file_name[50]={0};
+            char key_str[8]={0};
+            sprintf(key_str,"_k%02x", nfc_hal_info.fw_info.bl_info.version[2]);
+            strncpy(key_file_name, file_name, ext_pos - file_name);
+            strcat(key_file_name, key_str);
+            strcat(key_file_name, ext_pos);
+            OSI_logd("exact key file name:%s", key_file_name);
+
+            strcpy(file_path, from);
+            if(file_path[strlen(file_path) - 1 ] != '/'){
+                strcat(file_path, "/");
+            }
+            strcat(file_path, key_file_name);
+            if(stat(file_path, &attrib) == 0){
+                 OSI_logd("Use exact key file: %s", file_path);
+                 return file_path;
+            }
+        }
+    }
+
     // Looking at default root directory of storage
-    strncpy(file_path, from, sizeof(file_path) - 1);
-    strncat(file_path, "/", 1);
-    strncat(file_path, file_name, sizeof(file_path) - strlen(file_name) -1);
-    if (stat(file_path, &attrib) == 0) return file_path;
+
+    memset(file_path, 0, sizeof(file_path));
+    strcpy(file_path, from);
+    if(file_path[strlen(file_path) - 1 ] != '/'){
+        strcat(file_path, "/");
+    }
+    strcat(file_path, file_name);
+    if (stat(file_path, &attrib) == 0){
+        return file_path;
+    }
 
     OSI_logd("File is not exist: %s", file_path);
   }

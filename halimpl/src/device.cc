@@ -115,9 +115,9 @@ void device_close(void) {
   pthread_mutex_lock(&tr_lock);
   tr_driver = -1;
   pw_driver = -1;
-  pthread_mutex_unlock(&tr_lock);
 
   if (tr_closer != 0) write(tr_closer, "x", 1);
+  pthread_mutex_unlock(&tr_lock);
 
   OSI_task_stop(read_task);
 }
@@ -336,9 +336,11 @@ void read_thread(void) {
     OSI_logd("Sent message to HAL message task, remind que: %d", ret);
   }
 
+  pthread_mutex_lock(&tr_lock);
   close(close_pipe[0]);
   close(close_pipe[1]);
   tr_closer = 0;
+  pthread_mutex_unlock(&tr_lock);
 
   osi_unlock();  // TODO: why?
 

@@ -2,7 +2,7 @@ on boot
     chown nfc nfc /dev/sec-nfc
     chmod 0770 /dev/sec-nfc
 
-service vendor.samsung_nfc_hal_service /vendor/bin/hw/android.hardware.nfc@1.2-service.samsung
+service vendor.samsung_nfc_hal_service /vendor/bin/hw/android.hardware.nfc-service.samsung
     class hal
     user nfc
     group nfc

@@ -86,12 +86,13 @@ int check_force_fw_update_mode() {
   return (uint8_t)force_update_mode;
 }
 
-#ifdef NFC_SEC_ESE_COLDRESET
 uint8_t* get_bootparam_for_coldreset() {
+  static uint8_t bootParam[7] = {0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+
+#ifdef NFC_SEC_ESE_COLDRESET
   extern int wakeup_delay;
   int ese_delay;
   int param;
-  static uint8_t bootParam[7] = {0x00,};
 
   if (!get_config_int("ESE_DELAY", &ese_delay))
     ese_delay = wakeup_delay;
@@ -117,10 +118,12 @@ uint8_t* get_bootparam_for_coldreset() {
     bootParam[6] = 0x01;
   else
     bootParam[6] = param;
+#endif
 
   return bootParam;
 }
 
+#ifdef NFC_SEC_ESE_COLDRESET
 static bool isBootCmdSent = false;
 #endif
 
@@ -130,22 +133,15 @@ void nfc_hal_open_sm(tNFC_HAL_MSG* msg) {
   tNFC_HAL_FW_BL_INFO* bl = &fw->bl_info;
   tNFC_HAL_VS_INFO* vs = &nfc_hal_info.vs_info;
   size_t ret;
-#ifdef NFC_SEC_ESE_COLDRESET
   uint8_t* bootParams;
-#endif
 
   switch (msg->event) {
     case HAL_EVT_OPEN:
 #ifndef NFC_HAL_DO_NOT_USE_BOOTLOADER
       device_set_mode(NFC_DEV_MODE_BOOTLOADER);
       OSI_logd("Get Bootloader information.");
-#ifdef NFC_SEC_ESE_COLDRESET
-      OSI_logd("Set eSE delay time for cold reset");
       bootParams = get_bootparam_for_coldreset();
       ret = nfc_fw_send_cmd(FW_CMD_GET_BOOTINFO, bootParams, 7);
-#else
-      ret = nfc_fw_send_cmd(FW_CMD_GET_BOOTINFO, NULL, 0);
-#endif
       break;
     case HAL_EVT_READ:
 #ifdef NFC_SEC_ESE_COLDRESET
@@ -253,12 +249,14 @@ void nfc_hal_open_sm(tNFC_HAL_MSG* msg) {
 
     case HAL_EVT_COMPLETE:
 #endif
+      OSI_logd("HAL_EVT_COMPLETE : Send HAL_NFC_OPEN_CPLT_EVT(ok)");
       device_set_mode(NFC_DEV_MODE_ON);
       nfc_hal_info.state = HAL_STATE_POSTINIT;
       nfc_stack_cback(HAL_NFC_OPEN_CPLT_EVT, HAL_NFC_STATUS_OK);
       break;
 
     case HAL_EVT_COMPLETE_FAILED:
+      OSI_logd("HAL_EVT_COMPLETE_FAILED : Send HAL_NFC_OPEN_CPLT_EVT(failed)");
       device_set_mode(NFC_DEV_MODE_OFF);
       nfc_stack_cback(HAL_NFC_OPEN_CPLT_EVT, HAL_NFC_STATUS_FAILED);
       break;
@@ -280,7 +278,8 @@ void nfc_hal_postinit_sm(tNFC_HAL_MSG* msg) {
   switch (msg->event) {
     case HAL_EVT_CORE_INIT:
       if(!(nfc_hal_info.flag & HAL_FLAG_ALREADY_INIT)) {
-        nfc_stack_cback(HAL_NFC_POST_INIT_CPLT_EVT, HAL_NFC_STATUS_FAILED);
+        OSI_logd("HAL_EVT_CORE_INIT : Send HAL_NFC_POST_INIT_CPLT_EVT(ok)");
+        nfc_stack_cback(HAL_NFC_POST_INIT_CPLT_EVT, HAL_NFC_STATUS_OK);
         break;
       }
       //AOSP stack passes an altered init param, it loses the fw info.
@@ -427,9 +426,11 @@ void nfc_hal_postinit_sm(tNFC_HAL_MSG* msg) {
                  vs->swreg_number_version[2], vs->swreg_number_version[3]);
       }
 
+      OSI_logd("HAL_EVT_COMPLETE : Send HAL_NFC_POST_INIT_CPLT_EVT(ok)");
       nfc_stack_cback(HAL_NFC_POST_INIT_CPLT_EVT, HAL_NFC_STATUS_OK);
       break;
     case HAL_EVT_COMPLETE_FAILED:
+      OSI_logd("HAL_EVT_COMPLETE_FAILED : Send HAL_NFC_POST_INIT_CPLT_EVT(failed)");
       nfc_stack_cback(HAL_NFC_POST_INIT_CPLT_EVT, HAL_NFC_STATUS_FAILED);
       break;
 
@@ -956,33 +957,41 @@ void nfc_hal_vs_sm(tNFC_HAL_MSG* msg) {
         nfc_hal_fw_send_fw_status(FW_UPDATE_STATUS_ERROR);
       {
         hal_nci_send_clearLmrt();
-        if ((SNFC_N74 == bl->version[0]) || (SNFC_N84 <= bl->version[0])) {
-          vs->state = VS_SET_SW_API_TRACE;
-        } else {
-          vs->state = VS_W4_COMPLETE;
-        }
+        vs->state = VS_W4_SET_LMRT_RSP;
         break;
       }
   /* End WA */
 
-    case VS_SET_SW_API_TRACE:
+    case VS_W4_SET_LMRT_RSP:
     {
-      OSI_logd("Vendor: Set SW API Trace");
-      char valueStr[PROPERTY_VALUE_MAX] = {0};
-      int ret;
+        if ((SNFC_N74 == bl->version[0]) || (SNFC_N84 <= bl->version[0])) {
+          char valueStr[PROPERTY_VALUE_MAX] = {0};
+          int ret;
 
-      ret = property_get("nfc.fw.sw_api_trace", valueStr, "");
-      if (ret > 1) {
-        OSI_logd("Invalid SW API Trace property.");
-        vs->state = VS_W4_COMPLETE;
+          ret = property_get("nfc.fw.sw_api_trace", valueStr, "");
+          if(ret <= 1){
+            OSI_logd("Vendor: Set SW API Trace");
+            hal_nci_send_setSWAPITrace((uint8_t*)valueStr, 1);
+            vs->state = VS_W4_SET_SW_API_TRACE_RSP;
+            break;
+          }
+          OSI_logd("Invalid SW API Trace property.");
+        }
         [[fallthrough]];
-      } else {
-        hal_nci_send_setSWAPITrace((uint8_t*)valueStr, 1);
-        vs->state = VS_W4_SET_SW_API_TRACE;
-        break;
-      }
+
     }
-    case VS_W4_SET_SW_API_TRACE:
+
+    case VS_W4_SET_SW_API_TRACE_RSP:
+    {
+        OSI_logd("Vendor: Set core set configurations");
+        if(hal_nci_send_core_set_conf() == 0){
+          vs->state = VS_W4_CORE_SET_CONF_RSP;
+          break;
+        }
+        [[fallthrough]];
+    }
+
+    case VS_W4_CORE_SET_CONF_RSP:
       vs->state = VS_W4_COMPLETE;
       [[fallthrough]];
 

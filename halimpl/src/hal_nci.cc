@@ -23,6 +23,7 @@
 #include "hal_msg.h"
 #include "osi.h"
 #include "util.h"
+#include "config.h"
 
 int hal_nci_send(tNFC_NCI_PKT* pkt) {
   size_t len = (size_t)(pkt->len + NCI_HDR_SIZE);
@@ -105,6 +106,33 @@ void hal_nci_send_setSWAPITrace(uint8_t* option, unsigned int len) {
   }
 
   hal_nci_send(&nci_pkt);
+}
+
+int hal_nci_send_core_set_conf(void)
+{
+  tNFC_NCI_PKT nci_pkt;
+
+  uint8_t buffer[256-4];
+  long retlen = 0;
+
+  GetByteArrayValue(NAME_NFA_CORE_SET_CFG, (char*)buffer,
+                          sizeof(buffer), &retlen);
+
+  if(retlen < 4){
+    OSI_loge("Invalid len of core set configuration data : %ld",
+               retlen);
+    return -1;
+  }
+  memset(&nci_pkt, 0, sizeof(tNFC_NCI_PKT));
+  nci_pkt.oct0 = NCI_MT_CMD | NCI_PBF_LAST | NCI_GID_CORE;
+  nci_pkt.oid = NCI_CORE_SET_CONFIG;
+  nci_pkt.len = retlen;
+
+  memcpy(nci_pkt.payload, buffer, retlen);
+
+  hal_nci_send(&nci_pkt);
+
+  return 0;
 }
 
 void get_clock_info(int rev, int field_name, int* buffer) {

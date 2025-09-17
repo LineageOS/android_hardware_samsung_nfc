@@ -16,13 +16,13 @@ using android::hardware::nfc::V1_2::INfc;
 using android::hardware::nfc::V1_2::implementation::Nfc;
 
 int main() {
-  ALOGD("SEC NFC HAL Service 1.2 is starting.");
+  ALOGD("SEC NFC HIDL HAL Service 1.2 is starting.");
   sp<INfc> nfc_service = new Nfc();
 
   configureRpcThreadpool(1, true /*callerWillJoin*/);
   status_t status = nfc_service->registerAsService();
   if (status != OK) {
-    LOG_ALWAYS_FATAL("Could not register service for NFC HAL Iface (%d).",
+    LOG_ALWAYS_FATAL("Could not register service for NFC HIDL HAL Iface (%d).",
                      status);
     return -1;
   }

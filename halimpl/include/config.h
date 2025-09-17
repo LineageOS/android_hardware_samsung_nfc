@@ -96,6 +96,8 @@ int updateConfigTimestamp();
 #define NAME_OFFHOST_ROUTE_UICC "OFFHOST_ROUTE_UICC"
 #define NAME_DEFAULT_ISODEP_ROUTE "DEFAULT_ISODEP_ROUTE"
 
+#define NAME_NFA_CORE_SET_CFG "NFA_CORE_SET_CFG"
+
 /* default configuration */
 #define default_storage_location "/data/vendor/nfc"
 

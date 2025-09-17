@@ -93,8 +93,9 @@ typedef enum {
   VS_W4_FILE_RFREG_RSP,
   VS_W4_CFG_RFREG_RSP,
   VS_W4_PROP_RSP,
-  VS_SET_SW_API_TRACE,
-  VS_W4_SET_SW_API_TRACE,
+  VS_W4_SET_LMRT_RSP,
+  VS_W4_SET_SW_API_TRACE_RSP,
+  VS_W4_CORE_SET_CONF_RSP,
   VS_W4_COMPLETE,
 } eNFC_HAL_VS_STATE;
 
@@ -308,7 +309,11 @@ int nfc_hal_power_cycle();
 int nfc_hal_factory_reset(void);
 int nfc_hal_closeForPowerOffCase(void);
 void nfc_hal_getVendorConfig(NfcConfig& config);  // To-Do
-
+// AIDL INfc
+void nfc_hal_setLogging(bool enable);     // for setEnableVerboseLogging(in boolean enable)
+bool nfc_hal_isLoggingEnabled();      // for isVerboseLoggingEnabled
+int nfc_hal_core_initialized_for_aidl();
+void nfc_hal_enableAidl(bool enable);
 /*************************************
  * NFC HAL functions.
  *************************************/
@@ -370,6 +375,7 @@ void hal_nci_send_prop_fw_cfg(uint8_t product);
 void hal_nci_send_prop_get_rfreg_ver(void);
 void hal_nci_send_clearLmrt(void);
 void hal_nci_send_setSWAPITrace(uint8_t* option, unsigned int len);
+int hal_nci_send_core_set_conf(void);
 void nci_init_timeout(void* param);
 bool nfc_hal_prehandler(tNFC_NCI_PKT* pkt);
 int nci_read_payload(tNFC_HAL_MSG* msg);

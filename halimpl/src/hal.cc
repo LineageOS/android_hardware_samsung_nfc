@@ -30,6 +30,7 @@ using android::hardware::nfc::V1_1::NfcEvent;
 tNFC_HAL_CB nfc_hal_info;
 
 bool sending_nci_packet = false;
+static bool aidl_hal_enabled = false;
 
 /*************************************
  * Generic device handling.
@@ -150,6 +151,14 @@ int nfc_hal_open(nfc_stack_callback_t* p_cback,
 
   if (nfc_hal_info.state == HAL_STATE_POSTINIT) {
     OSI_logt("SAMSUNG Hal already open");
+    msg = (tNFC_HAL_MSG*)OSI_mem_get(HAL_EVT_SIZE);
+    if (msg != NULL) {
+      nfc_hal_info.stack_cback = p_cback;
+      nfc_hal_info.data_cback = p_data_cback;
+      nfc_hal_info.state = HAL_STATE_OPEN;
+      msg->event = HAL_EVT_OPEN;
+      OSI_queue_put(nfc_hal_info.msg_q, (void*)msg);
+    }
     return 0;
   }
 
@@ -197,6 +206,7 @@ int nfc_hal_close() {
 
   nfc_hal_info.state = HAL_STATE_CLOSE;
 
+  OSI_logd("nfc_hal_close : Send HAL_NFC_CLOSE_CPLT_EVT(ok)");
   nfc_stack_cback(HAL_NFC_CLOSE_CPLT_EVT, HAL_NFC_STATUS_OK);
 
   OSI_deinit();
@@ -234,9 +244,10 @@ int nfc_hal_write(uint16_t data_len, const uint8_t* p_data) {
 
 int nfc_hal_core_initialized(uint8_t* p_core_init_rsp_params) {
   tNFC_HAL_MSG* msg;
-  size_t size = (size_t)p_core_init_rsp_params[2] + 3;
-
   OSI_logt("enter;");
+
+  if(p_core_init_rsp_params != nullptr) {
+  size_t size = (size_t)p_core_init_rsp_params[2] + 3;
 
   msg = (tNFC_HAL_MSG*)OSI_mem_get(size + HAL_EVT_SIZE);
   if (msg != NULL) {
@@ -245,7 +256,13 @@ int nfc_hal_core_initialized(uint8_t* p_core_init_rsp_params) {
 
     OSI_queue_put(nfc_hal_info.msg_q, (void*)msg);
   }
+  }
+  else {
+    OSI_logt("p_core_init_rsp_params is null;");
+  }
+
   OSI_logt("exit;");
+
   return 0;
 }
 
@@ -259,7 +276,14 @@ int nfc_hal_pre_discover() {
     OSI_queue_put(nfc_hal_info.msg_q, (void *)msg);
   }
   */
+  OSI_logd("%s:aidl_hal_enabled=%d",__func__, aidl_hal_enabled);
   OSI_logt("exit;");
+  if(aidl_hal_enabled){
+    /*Tell AIDL HAL not to wait for HAL_NFC_PRE_DISCOVER_CPLT_EVT*/
+    return NFC_STATUS_FAILED;
+  }
+
+  /*return success is required for HIDL HAL VTS */
   return 0;
 }
 
@@ -431,6 +455,46 @@ void nfc_hal_getVendorConfig_1_2(
   }
 
   OSI_logt("exit;");
+}
+
+// AIDL INfc
+// for setEnableVerboseLogging(in boolean enable)
+void nfc_hal_setLogging(bool enable) {
+  if(!enable)
+    OSI_set_debug_level(0);
+  else
+    OSI_set_debug_level(2);
+}
+
+// for isVerboseLoggingEnabled
+bool nfc_hal_isLoggingEnabled() {
+  if(osi_debug_level == 0x00)
+    return false;
+
+  return true;
+}
+
+int nfc_hal_core_initialized_for_aidl() {
+  OSI_logt("enter;");
+  tNFC_HAL_MSG *msg;
+  msg = (tNFC_HAL_MSG *)OSI_mem_get(HAL_EVT_SIZE);
+  if (msg != NULL) {
+    OSI_logt("send  HAL_EVT_CORE_INIT");
+    msg->event = HAL_EVT_CORE_INIT;
+    OSI_queue_put(nfc_hal_info.msg_q, (void *)msg);
+    return 0;
+  }
+  else
+    OSI_logt("nfc_hal_core_initialized_for_aidl : msg is null;");
+
+  OSI_logt("exit;");
+
+  return 0;
+}
+
+void nfc_hal_enableAidl(bool enable){
+  OSI_logt("%s:enable=%d",__func__, enable);
+  aidl_hal_enabled = enable;
 }
 
 #endif

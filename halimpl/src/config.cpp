@@ -89,7 +89,18 @@ size_t readConfigFile(const char* fileName, uint8_t** p_data) {
   const size_t file_size = ftell(fd);
   rewind(fd);
 
+  // [4098] patch for prevent error
+  if ((long)file_size < 0) {
+    ALOGE("%s Invalid file size file_size = %zu\n", __func__, file_size);
+    fclose(fd);
+    return 0;
+  }
+
   uint8_t* buffer = new uint8_t[file_size];
+  if (!buffer) {
+    fclose(fd);
+    return 0;
+  }
   size_t read = fread(buffer, file_size, 1, fd);
   fclose(fd);
 

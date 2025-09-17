@@ -137,6 +137,7 @@ int OSI_queue_put(tOSI_QUEUE_HANDLER queue, void* p_data) {
 
   if (!queue || queue->state != OSI_ALLOCATED) {
     OSI_loge("%s : queue is not allocated", __func__);
+    osi_unlock();
     return -1;
   }
 
@@ -205,6 +206,7 @@ void* OSI_queue_get_wait(tOSI_QUEUE_HANDLER queue) {
 
   if (!queue || queue->state != OSI_ALLOCATED) {
     OSI_loge("%s : queue is not allocated", __func__);
+    osi_unlock();
     return NULL;
   }
 
