@@ -16,6 +16,52 @@
       "message": "exy 850\n\nIf anyone is interested in fixing:\n\nE SecHAL  : get_image: Failed to find image file (0xb400007d88711a30)",
       "revId": "ba009b4df502f86a0c862a0ffbc4718508a9e865",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "49958662_9b82f527",
+        "filename": "halimpl/src/hal_selectImage.cc",
+        "patchSetId": 3
+      },
+      "lineNbr": 315,
+      "author": {
+        "id": 11883
+      },
+      "writtenOn": "2025-09-19T14:56:09Z",
+      "side": 1,
+      "message": "```\nelse\n    file_name \u003d get_image_file_name(image);\n```\nshould fix it",
+      "range": {
+        "startLine": 315,
+        "startChar": 0,
+        "endLine": 315,
+        "endChar": 13
+      },
+      "revId": "ba009b4df502f86a0c862a0ffbc4718508a9e865",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "2533ef44_2add67fd",
+        "filename": "halimpl/src/hal_selectImage.cc",
+        "patchSetId": 3
+      },
+      "lineNbr": 317,
+      "author": {
+        "id": 11883
+      },
+      "writtenOn": "2025-09-19T14:56:09Z",
+      "side": 1,
+      "message": "this code assumes a file names k\\x.bin exists.",
+      "range": {
+        "startLine": 296,
+        "startChar": 0,
+        "endLine": 317,
+        "endChar": 5
+      },
+      "revId": "ba009b4df502f86a0c862a0ffbc4718508a9e865",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
