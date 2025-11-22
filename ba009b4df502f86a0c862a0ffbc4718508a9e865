@@ -18,6 +18,23 @@
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "7a7c70b8_209ed382",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 34512
+      },
+      "writtenOn": "2025-11-22T10:43:27Z",
+      "side": 1,
+      "message": "works on samsung now. Move HAL over to hardware/samsung_slsi/nfc please",
+      "revId": "ba009b4df502f86a0c862a0ffbc4718508a9e865",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "49958662_9b82f527",
